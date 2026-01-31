@@ -135,16 +135,10 @@ st.markdown("""
     }
     
     /* 입력창 내부 텍스트 색상 강제 (브라우저 호환성) */
-    .stTextInput input, .stDateInput input, .stTimeInput input {
+    .stTextInput input {
         color: #000000 !important;
         -webkit-text-fill-color: #000000 !important;
         caret-color: #000000 !important;
-    }
-
-    /* 날짜/시간 선택기 */
-    input[type="date"], input[type="time"] {
-        background-color: #ffffff !important;
-        color: #000000 !important;
     }
 
     /* placeholder 색상 */
@@ -355,8 +349,12 @@ st.sidebar.markdown("---")
 with st.sidebar.form("input_form"):
     name = st.text_input("이름", "방문자")
     col1, col2 = st.columns(2)
-    with col1: b_date = st.date_input("생년월일", datetime.date(1990, 1, 1))
-    with col2: b_time = st.time_input("태어난 시각", datetime.time(12, 0))
+    with col1: 
+        # [수정] 텍스트 입력 방식으로 변경 (가독성 해결)
+        b_date_str = st.text_input("생년월일 (예: 19900101)", "19900101")
+    with col2: 
+        # [수정] 텍스트 입력 방식으로 변경
+        b_time_str = st.text_input("태어난 시각 (예: 12:30)", "12:00")
     submitted = st.form_submit_button("✨ 운세 분석 시작")
 
 col_h1, col_h2 = st.columns([3, 1])
@@ -373,6 +371,15 @@ if submitted:
     if not MY_API_KEY:
         st.error("🚨 API 키가 설정되지 않았습니다.")
     else:
+        # [수정] 날짜/시간 포맷 파싱 로직 추가
+        try:
+            b_date = datetime.datetime.strptime(b_date_str, "%Y%m%d").date()
+            b_time = datetime.datetime.strptime(b_time_str, "%H:%M").time()
+        except ValueError:
+            st.error("❌ 날짜 또는 시간 형식이 올바르지 않습니다.")
+            st.warning("생년월일은 8자리(예: 19900101), 시간은 24시간제(예: 14:30)로 입력해주세요.")
+            st.stop()
+
         # 데이터 계산
         now = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
         by, bm, bd = b_date.year, b_date.month, b_date.day
@@ -431,6 +438,7 @@ if submitted:
 ## 🎯 오늘의 종합 운세
 
 **점수:** ___/100점
+
 **한 줄 요약:** (오늘을 한 문장으로)
 
 오늘의 에너지를 비유하자면 "___"에 비유할 수 있습니다.
