@@ -14,12 +14,12 @@ import requests
 # [기본 설정] 페이지 디자인 & CSS
 # ==========================================
 st.set_page_config(
-    page_title="AI 운명 전략가 (V5.0 Final)",
+    page_title="운세 전략가 (V5.0 Final)",
     page_icon="🔮",
     layout="wide"
 )
 
-# [CSS] 가독성 최적화 테마
+# [CSS] 가독성 최적화 테마 (입력창 수정 포함)
 st.markdown("""
     <style>
     /* 메인 배경 */
@@ -50,18 +50,18 @@ st.markdown("""
     }
     
     /* 본문 폭 제한 (15% 감소) */
-.block-container {
-    max-width: 1020px !important;
-    padding-left: 2rem !important;
-    padding-right: 2rem !important;
-}
+    .block-container {
+        max-width: 1020px !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+    }
 
-/* 마크다운 본문 폭 더 좁게 */
-.stMarkdown {
-    max-width: 765px;
-    margin-left: auto;
-    margin-right: auto;
-}
+    /* 마크다운 본문 폭 더 좁게 */
+    .stMarkdown {
+        max-width: 765px;
+        margin-left: auto;
+        margin-right: auto;
+    }
     
     /* 메트릭 값 */
     div[data-testid="stMetricValue"] { 
@@ -124,25 +124,33 @@ st.markdown("""
         color: #ffffff !important;
     }
     
- /* 입력 필드 */
-input, textarea, select {
-    background-color: rgba(30, 30, 50, 0.8) !important;
-    color: #ffffff !important;
-    border: 2px solid #ffd700 !important;
-    border-radius: 8px !important;
-    padding: 8px 12px !important;
-}
+    /* [수정] 입력 필드 가독성 확보 (흰 배경에 검은 글씨 강제) */
+    input, textarea, select {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+        border: 2px solid #ffd700 !important;
+        border-radius: 8px !important;
+        padding: 8px 12px !important;
+        font-weight: bold !important;
+    }
+    
+    /* 입력창 내부 텍스트 색상 강제 (브라우저 호환성) */
+    .stTextInput input, .stDateInput input, .stTimeInput input {
+        color: #000000 !important;
+        -webkit-text-fill-color: #000000 !important;
+        caret-color: #000000 !important;
+    }
 
-/* 날짜/시간 선택기 */
-input[type="date"], input[type="time"] {
-    background-color: rgba(30, 30, 50, 0.9) !important;
-    color: #ffffff !important;
-}
+    /* 날짜/시간 선택기 */
+    input[type="date"], input[type="time"] {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
 
-/* placeholder 색상 */
-input::placeholder, textarea::placeholder {
-    color: rgba(255, 215, 0, 0.6) !important;
-}
+    /* placeholder 색상 */
+    input::placeholder, textarea::placeholder {
+        color: rgba(0, 0, 0, 0.5) !important;
+    }
     
     input:focus, textarea:focus {
         border-color: #ffd700 !important;
@@ -168,6 +176,7 @@ input::placeholder, textarea::placeholder {
     }
     </style>
     """, unsafe_allow_html=True)
+
 # ==========================================
 # [보안] API 키
 # ==========================================
@@ -221,28 +230,14 @@ def get_real_iching():
 # [함수 2] 점성술 (실시간 Ephem 계산 복원)
 # ==========================================
 def get_real_astrology(year, month, day, hour, minute):
-    """
-    Ephem 라이브러리를 사용하여 실제 행성의 별자리 위치를 계산합니다.
-    (단순 텍스트 출력이 아니라 실제 천문 계산 로직 적용)
-    """
     try:
-        # 관측지 설정 (서울)
         obs = ephem.Observer()
         obs.lat, obs.lon = '37.5665', '126.9780'
-        # UTC 변환 (한국시간 - 9시간)
         obs.date = datetime.datetime(year, month, day, hour, minute) - datetime.timedelta(hours=9)
-        
-        # 태양과 달 객체 생성 및 계산
-        sun = ephem.Sun(obs)
-        sun.compute(obs)
-        moon = ephem.Moon(obs)
-        moon.compute(obs)
-        
-        # 별자리 매핑 (Ephem은 별자리 이름을 바로 주지 않으므로 좌표로 매핑 필요하지만, 
-        # 여기서는 ephem.constellation 기능을 사용하여 간략화된 정확한 별자리를 가져옵니다)
-        sun_const = ephem.constellation(sun)[1] # (Abbr, Name) 중 Name 반환
+        sun = ephem.Sun(obs); sun.compute(obs)
+        moon = ephem.Moon(obs); moon.compute(obs)
+        sun_const = ephem.constellation(sun)[1]
         moon_const = ephem.constellation(moon)[1]
-        
         return {"desc": f"태양은 {sun_const}자리에, 달은 {moon_const}자리에 위치합니다."}
     except Exception as e:
         return {"desc": f"천문 데이터 계산 중 오류: {str(e)}"}
@@ -251,28 +246,17 @@ def get_real_astrology(year, month, day, hour, minute):
 # [함수 3] 기문둔갑 (Lunar_python 정밀 계산 복원)
 # ==========================================
 def get_real_qimen(year, month, day, hour):
-    """
-    Lunar Python 라이브러리를 사용하여 그날의 정확한 
-    재신(God of Wealth)과 희신(God of Joy) 방향을 산출합니다.
-    """
     try:
-        # 양력을 입력받아 음력/간지 변환 객체 생성
         solar = Solar.fromYmdHms(year, month, day, hour, 0, 0)
         lunar = solar.getLunar()
-        
-        # 재신(재물)과 희신(기쁨)의 방향 계산
-        wealth_pos = lunar.getDayPositionCai() # 예: 震, 兌
+        wealth_pos = lunar.getDayPositionCai()
         joy_pos = lunar.getDayPositionXi()
-        
-        # 한자 -> 한글 매핑 (정확한 8방위)
         direction_map = {
             "震": "동쪽(East)", "兌": "서쪽(West)", "離": "남쪽(South)", "坎": "북쪽(North)",
             "巽": "남동쪽(SE)", "坤": "남서쪽(SW)", "乾": "북서쪽(NW)", "艮": "북동쪽(NE)"
         }
-        
         wealth_str = direction_map.get(wealth_pos, wealth_pos)
         joy_str = direction_map.get(joy_pos, joy_pos)
-        
         return {"desc": f"💰 재물운 방향: {wealth_str} / 🎉 성공운 방향: {joy_str}"}
     except Exception as e:
         return {"desc": "방위 데이터 계산 실패"}
@@ -332,11 +316,10 @@ def get_real_saju(year, month, day, hour, minute):
     except:
         return {"text": "정보 없음", "day_master": "갑", "desc": "계산 오류"}
 
-# [시각화 함수] 오행 차트 (랜덤성 유지)
+# [시각화 함수] 오행 차트
 def draw_five_elements_chart(day_master):
     categories = ['목(나무)', '화(불)', '토(흙)', '금(쇠)', '수(물)']
-    weights = [3, 3, 3, 3, 3] # 기본 점수
-    # 일간에 따른 가중치
+    weights = [3, 3, 3, 3, 3] 
     if day_master in ['갑', '을']: weights[0] += 2
     elif day_master in ['병', '정']: weights[1] += 2
     elif day_master in ['무', '기']: weights[2] += 2
@@ -365,7 +348,7 @@ def load_lottieurl(url):
 # ==========================================
 # [UI] 사이드바 및 메인
 # ==========================================
-st.sidebar.title("🔮 AI 운명 전략가")
+st.sidebar.title("🔮 운세 전략가")
 st.sidebar.caption("Master Engine V5.0 Final")
 st.sidebar.markdown("---")
 
@@ -374,11 +357,11 @@ with st.sidebar.form("input_form"):
     col1, col2 = st.columns(2)
     with col1: b_date = st.date_input("생년월일", datetime.date(1990, 1, 1))
     with col2: b_time = st.time_input("태어난 시각", datetime.time(12, 0))
-    submitted = st.form_submit_button("✨ 운명 분석 시작")
+    submitted = st.form_submit_button("✨ 운세 분석 시작")
 
 col_h1, col_h2 = st.columns([3, 1])
 with col_h1:
-    st.title(f"🌌 {name}님을 위한 심층 운명 리포트")
+    st.title(f"🌌 {name}님을 위한 심층 운세 리포트")
     st.markdown("##### 사주 × 점성술 × 수비학 × 주역 × 기문둔갑 × 타로 통합 분석")
 with col_h2:
     lottie_json = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_tijmpky4.json")
@@ -395,7 +378,7 @@ if submitted:
         by, bm, bd = b_date.year, b_date.month, b_date.day
         bh, bmin = b_time.hour, b_time.minute
         
-        # 각 모듈 호출 (완전판 로직 적용됨)
+        # 각 모듈 호출
         saju = get_real_saju(by, bm, bd, bh, bmin)
         astro = get_real_astrology(by, bm, bd, bh, bmin)
         qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
@@ -424,9 +407,9 @@ if submitted:
             st.info(f"🪐 **점성술 배치:** {astro['desc']}")
             st.info(f"☯️ **주역 괘:** {iching}")
 
-# 4. AI 리포트 생성 프롬프트
+        # 4. AI 리포트 생성 프롬프트 (수정됨)
         prompt = f"""
-당신은 대한민국 최고의 운명 전략가입니다. {name}님을 위한 **오늘 하루 실전 가이드**를 작성하세요.
+저는 대한민국 최고의 운세 전략가입니다. {name}님을 위한 오늘 하루 실전 가이드를 작성해드립니다.
 
 [데이터]
 - 🀄 사주: {saju['text']} ({saju['desc']})
@@ -441,6 +424,7 @@ if submitted:
 - 추상적 표현 금지, 구체적 시간/행동만
 - 비유와 실생활 예시 필수
 - 총 2000자 이상 유지
+- 답변 첫머리에 제목을 반복하지 말고 바로 본문으로 들어갈 것.
 
 ---
 
@@ -572,25 +556,7 @@ if submitted:
 내일은 일운수가 ___로 바뀌니, ___를 준비하세요.
 """
 
-        st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
-
-        with st.spinner("⚡ Gemini 2.5 Flash가 운명의 코드를 분석 중입니다..."):
-            try:
-                client = genai.Client(api_key=MY_API_KEY)
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=prompt
-                )
-                
-                if response.text:
-                    st.markdown(response.text)
-                else:
-                    st.warning("AI 리포트 생성에 실패했습니다. 다시 시도해주세요.")
-                    
-            except Exception as e:
-                st.error(f"분석 중 오류 발생: {e}")
-        
-        st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
+        st.subheader(f"📜 {name} 님을 위한 심층 운세 리포트")
         with st.spinner("Gemini 2.5 Flash가 운명의 코드를 정밀 분석 중입니다..."):
             try:
                 # 신버전 google-genai SDK 방식 유지
