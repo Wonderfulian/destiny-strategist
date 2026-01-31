@@ -11,7 +11,7 @@ from lunar_python import Lunar, Solar
 # [기본 설정] 페이지 제목 및 레이아웃
 # ==========================================
 st.set_page_config(
-    page_title="AI 운명 전략가 (Master Engine v3.0)",
+    page_title="운명 전략가 (Master Engine v4.0)",
     page_icon="🔮",
     layout="wide"
 )
@@ -27,7 +27,136 @@ except:
     MY_API_KEY = "" 
 
 # ==========================================
-# [함수] 5대 알고리즘 로직
+# [함수] 수비학 (Numerology) 로직
+# ==========================================
+def reduce_to_single_digit(num, check_master=True):
+    """
+    숫자를 한 자리로 줄이기 (마스터 넘버 11, 22, 33 예외 처리)
+    """
+    while num > 9:
+        # 마스터 넘버 체크
+        if check_master and num in [11, 22, 33]:
+            return num
+        # 각 자릿수 합산
+        num = sum(int(digit) for digit in str(num))
+    return num
+
+def calculate_life_path_number(year, month, day):
+    """
+    운명수 (Life Path Number) 계산
+    생년월일의 모든 숫자를 더해서 한 자리로 줄임 (마스터 넘버 제외)
+    """
+    # 연도, 월, 일 각각의 숫자 합산
+    year_sum = sum(int(d) for d in str(year))
+    month_sum = sum(int(d) for d in str(month))
+    day_sum = sum(int(d) for d in str(day))
+    
+    # 전체 합산
+    total = year_sum + month_sum + day_sum
+    
+    # 한 자리로 줄이기 (마스터 넘버 체크)
+    life_path = reduce_to_single_digit(total, check_master=True)
+    
+    return life_path
+
+def calculate_personal_day_number(birth_month, birth_day, current_year, current_month, current_day):
+    """
+    개인 일운수 (Personal Day Number) 계산
+    [생월 + 생일] + [현재 년도 + 현재 월 + 현재 일]
+    """
+    # 생월 + 생일
+    birth_sum = birth_month + birth_day
+    
+    # 현재 연도 각 자릿수 합산
+    year_sum = sum(int(d) for d in str(current_year))
+    
+    # 현재 월 + 현재 일
+    date_sum = current_month + current_day
+    
+    # 전체 합산
+    total = birth_sum + year_sum + date_sum
+    
+    # 한 자리로 줄이기 (일운수는 보통 마스터 넘버도 줄임)
+    personal_day = reduce_to_single_digit(total, check_master=False)
+    
+    return personal_day
+
+def get_numerology_meaning(number, is_life_path=True):
+    """
+    수비학 숫자별 의미 데이터베이스
+    """
+    meanings = {
+        1: {
+            "name": "리더 (The Leader)",
+            "keywords": "시작, 독립, 개척",
+            "desc": "남을 이끄는 리더십, 자존심, 강한 추진력. 새로운 시작을 두려워하지 않는 개척자."
+        },
+        2: {
+            "name": "중재자 (The Mediator)",
+            "keywords": "협력, 조화, 섬세",
+            "desc": "관계 중심, 타인을 돕는 서포터, 평화주의자. 조화와 균형을 추구하는 외교관."
+        },
+        3: {
+            "name": "표현가 (The Expresser)",
+            "keywords": "창조, 즐거움, 표현",
+            "desc": "예술적 끼, 유머, 낙천적. 말과 글에 능하며 창의성이 넘치는 아티스트."
+        },
+        4: {
+            "name": "건축가 (The Builder)",
+            "keywords": "안정, 질서, 성실",
+            "desc": "논리적, 체계적, 현실적인 노력파. 견고한 기반을 만드는 실용주의자."
+        },
+        5: {
+            "name": "모험가 (The Adventurer)",
+            "keywords": "변화, 자유, 다양성",
+            "desc": "구속을 싫어함, 여행, 적응력, 홍보/마케팅에 능함. 자유로운 영혼의 탐험가."
+        },
+        6: {
+            "name": "양육자 (The Nurturer)",
+            "keywords": "책임, 봉사, 사랑",
+            "desc": "가정적, 모성애/부성애, 미적 감각, 헌신. 타인을 돌보는 수호자."
+        },
+        7: {
+            "name": "탐구자 (The Seeker)",
+            "keywords": "분석, 통찰, 신비",
+            "desc": "혼자만의 시간 중시, 전문가 기질, 철학적 사고. 진리를 찾는 현자."
+        },
+        8: {
+            "name": "지배자 (The Powerhouse)",
+            "keywords": "권력, 성공, 물질",
+            "desc": "비즈니스 감각, 목표 지향, 현실적 보상 추구. 성공을 거머쥐는 실행자."
+        },
+        9: {
+            "name": "인도주의자 (The Humanitarian)",
+            "keywords": "완성, 포용, 이상",
+            "desc": "인류애, 넓은 시야, 예술과 봉사, 마무리. 세상을 품는 박애주의자."
+        },
+        11: {
+            "name": "마스터 직관 (The Master Intuitive)",
+            "keywords": "직관, 영감, 비전",
+            "desc": "2의 조화에 영적 통찰력이 더해진 상태. 영감을 받아 비전을 제시하는 선구자."
+        },
+        22: {
+            "name": "마스터 건축가 (The Master Builder)",
+            "keywords": "실행, 위대함, 현실화",
+            "desc": "4의 성실함에 큰 꿈을 현실로 만드는 힘이 더해짐. 위대한 것을 건설하는 지도자."
+        },
+        33: {
+            "name": "마스터 스승 (The Master Teacher)",
+            "keywords": "헌신, 가르침, 성자",
+            "desc": "6의 사랑이 승화되어 인류를 위해 헌신하는 성자의 에너지. 무조건적 사랑의 화신."
+        }
+    }
+    
+    info = meanings.get(number, meanings[1])
+    
+    if is_life_path:
+        return f"{number} - {info['name']}: {info['desc']}"
+    else:
+        return f"오늘은 {number}의 에너지 ({info['keywords']}): {info['desc']}"
+
+# ==========================================
+# [함수] 기존 5대 알고리즘 로직
 # ==========================================
 def get_real_iching():
     """주역 64괘 전체 리스트"""
@@ -141,13 +270,13 @@ with st.sidebar.form("input_form"):
     submitted = st.form_submit_button("✨ 운명 분석 시작")
 
 st.sidebar.markdown("---")
-st.sidebar.info("v3.0 (2026.01) | Powered by Google Gemini")
+st.sidebar.info("v4.0 (2026.01) | 수비학 추가 | Powered by Google Gemini")
 
 # ==========================================
 # [메인] 실행 로직
 # ==========================================
 st.title("🌌 AI 운명 전략가 : Master Engine")
-st.markdown("##### 사주명리 × 점성술 × 기문둔갑 × 주역 × 타로 통합 분석")
+st.markdown("##### 사주명리 × 점성술 × 기문둔갑 × 주역 × 타로 × 수비학 통합 분석")
 st.divider()
 
 if submitted:
@@ -157,9 +286,7 @@ if submitted:
         st.info("💡 Streamlit Settings > Secrets에 'GOOGLE_API_KEY'를 입력하거나, 코드 17번째 줄에 직접 입력하세요.")
     else:
         try:
-            # =====================================================
-            # 🔥 핵심 수정 부분: 클라이언트 초기화
-            # =====================================================
+            # 클라이언트 초기화
             client = genai.Client(api_key=MY_API_KEY)
             
             # 2. 알고리즘 계산
@@ -168,34 +295,57 @@ if submitted:
             bh, bmin = b_time.hour, b_time.minute
             
             with st.spinner("🔮 운명 데이터를 계산하고 있습니다..."):
+                # 기존 5대 알고리즘
                 saju = get_real_saju(by, bm, bd, bh, bmin)
                 astro = get_real_astrology(by, bm, bd, bh, bmin)
                 qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
                 iching = get_real_iching()
                 tarot = get_real_tarot()
+                
+                # 🆕 수비학 계산
+                life_path = calculate_life_path_number(by, bm, bd)
+                personal_day = calculate_personal_day_number(bm, bd, now.year, now.month, now.day)
+                life_path_meaning = get_numerology_meaning(life_path, is_life_path=True)
+                personal_day_meaning = get_numerology_meaning(personal_day, is_life_path=False)
             
             # 3. 대시보드 출력
             st.success("✅ 분석 완료! 정밀 데이터가 산출되었습니다.")
             
+            # 첫 번째 줄: 기존 4개
             col1, col2, col3, col4 = st.columns(4)
             col1.metric("🀄 본원(일간)", saju['day_master'])
             
-            # 기문둔갑 데이터 안전하게 파싱
             qimen_wealth = qimen['desc'].split('/')[0].split(':')[1].strip() if '/' in qimen['desc'] else "동쪽"
             col2.metric("🧭 재물 방위", qimen_wealth)
             
             col3.metric("☯️ 주역 괘", iching.split('.')[0] if '.' in iching else iching[:10])
             col4.metric("🃏 타로", tarot.split('(')[0].strip() if '(' in tarot else tarot[:20])
             
+            # 🆕 두 번째 줄: 수비학
+            col5, col6 = st.columns(2)
+            col5.metric("🔢 운명수 (Life Path)", f"{life_path}", 
+                       help="태어난 날짜에 새겨진 평생의 고유 ID")
+            col6.metric("📅 오늘의 일운수", f"{personal_day}",
+                       help="오늘 하루의 에너지 흐름")
+            
             with st.expander("🔍 상세 데이터(Fact Check) 보기"):
                 st.code(f"""
 [분석 시점] {now.strftime('%Y-%m-%d %H:%M (KST)')}
+
 [사주팔자] {saju['text']} 
            {saju['desc']}
+
 [천문정보] {astro['desc']}
+
 [기문둔갑] {qimen['desc']}
+
 [주역결과] {iching}
+
 [타로결과] {tarot}
+
+[수비학]
+- 운명수 (Life Path Number): {life_path_meaning}
+- 오늘의 일운수 (Personal Day): {personal_day_meaning}
                 """, language="text")
 
             # 4. AI 리포트 생성 프롬프트
@@ -208,10 +358,12 @@ if submitted:
 - 기문둔갑: {qimen['desc']}
 - 주역 64괘: {iching}
 - 타로 78장: {tarot}
+- 🆕 수비학 운명수: {life_path_meaning}
+- 🆕 수비학 오늘의 일운수: {personal_day_meaning}
 - 분석 시점: {now.strftime('%Y년 %m월 %d일 %H시 %M분 (KST)')}
 
 [작성 가이드]
-- 분량: 1500-2000자 (상세하고 깊이 있게)
+- 분량: 2000-2500자 (매우 상세하고 깊이 있게)
 - 형식: 마크다운(Markdown) - ##, **, - 등 활용
 - 어조: 전문적이면서도 따뜻한 멘토의 말투
 
@@ -219,6 +371,11 @@ if submitted:
 ## 🎯 운세 대시보드
 - 오늘의 종합 운세 점수 (100점 만점)
 - 애정운, 재물운, 사업운, 건강운 각각 평가
+
+## 🔢 수비학 심층 분석 (NEW!)
+- 운명수 {life_path}의 의미: 당신의 인생 목적과 타고난 재능
+- 오늘의 일운수 {personal_day}의 의미: 오늘 하루의 에너지와 주의사항
+- 운명수와 오늘의 일운수가 어떻게 상호작용하는지 분석
 
 ## ⚡ 기문둔갑 시공간 전략
 - 오늘의 골든타임 (몇 시가 가장 좋은지 구체적으로)
@@ -230,22 +387,26 @@ if submitted:
 - 타로 {tarot}의 해석과 실천 방법
 - 두 점술의 공통 메시지
 
+## 🌟 종합 해석: 6가지 점술이 말하는 오늘
+- 사주명리, 점성술, 기문둔갑, 주역, 타로, 수비학이 공통적으로 말하는 핵심 메시지
+- 특히 수비학 운명수 {life_path}와 일운수 {personal_day}가 다른 점술들과 어떻게 연결되는지
+- 6가지 관점을 종합한 최종 조언
+
 ## 📋 오늘의 행동 강령
 - 꼭 해야 할 일 3가지 (구체적으로)
 - 절대 피해야 할 일 3가지
 - 오늘의 행운 아이템 (색상, 숫자, 음식, 방향 등)
 
 각 섹션을 풍부하고 구체적으로 작성하되, 실용적이고 실행 가능한 조언을 담아주세요.
+특히 수비학 섹션에서는 운명수와 일운수의 상호작용을 깊이 있게 분석해주세요.
 """
             
             st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
             
-            # =====================================================
-            # 🔥 핵심 수정 부분 2: Gemini API 호출 (2026년 1월 방식)
-            # =====================================================
-            with st.spinner("⚡ Gemini AI가 우주의 기운을 분석 중입니다... (약 10-15초 소요)"):
+            # 5. Gemini API 호출
+            with st.spinner("⚡ Gemini AI가 6가지 점술을 종합 분석 중입니다... (약 15-20초 소요)"):
                 try:
-                    # 방법 1: gemini-2.5-flash (2026년 1월 권장)
+                    # 1차: gemini-2.5-flash
                     response = client.models.generate_content(
                         model="gemini-2.5-flash",
                         contents=prompt
@@ -257,7 +418,7 @@ if submitted:
                     st.info("gemini-1.5-pro로 재시도 중...")
                     
                     try:
-                        # 방법 2: gemini-1.5-pro (백업)
+                        # 2차: gemini-1.5-pro
                         response = client.models.generate_content(
                             model="gemini-1.5-pro",
                             contents=prompt
@@ -322,6 +483,13 @@ if submitted:
             margin: 20px 0;
             border-left: 5px solid #667eea;
         }}
+        .numerology-box {{
+            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 5px solid #e17055;
+        }}
         strong {{
             color: #667eea;
         }}
@@ -342,6 +510,12 @@ if submitted:
             <p><strong>🃏 타로:</strong> {tarot}</p>
         </div>
         
+        <div class="numerology-box">
+            <h3>🔢 수비학 (Numerology)</h3>
+            <p><strong>운명수 (Life Path Number):</strong> {life_path_meaning}</p>
+            <p><strong>오늘의 일운수 (Personal Day):</strong> {personal_day_meaning}</p>
+        </div>
+        
         <hr>
         
         {full_response.replace('##', '<h2>').replace('**', '<strong>').replace('**', '</strong>').replace('- ', '<br>• ').replace('\n', '<br>')}
@@ -349,7 +523,7 @@ if submitted:
         <br><br>
         <div style="text-align: center; color: #999; font-size: 0.9em; border-top: 2px solid #eee; padding-top: 20px;">
             <p>Powered by Google Gen AI SDK (2026년 1월)</p>
-            <p>AI Fortune Master Engine v3.0</p>
+            <p>AI Fortune Master Engine v4.0 - 수비학 포함</p>
         </div>
     </div>
 </body>
@@ -392,15 +566,26 @@ else:
     - **기문둔갑 길방 계산**: 오늘의 재물 방향과 성공 방향 제시
     - **주역 64괘**: 전통 동양 철학의 지혜
     - **타로 78장**: 서양 점술의 통찰
-    - **AI 종합 분석**: Google Gemini가 모든 정보를 통합하여 맞춤형 조언 제공
+    - **🆕 수비학 (Numerology)**: 운명수와 개인 일운수 계산
+    - **AI 종합 분석**: Google Gemini가 6가지 점술을 통합하여 맞춤형 조언 제공
     
     ---
     
     #### 📋 사용 방법
     1. 왼쪽 사이드바에 이름과 생년월일시를 입력
     2. '운명 분석 시작' 버튼 클릭
-    3. AI가 5가지 점술을 종합하여 리포트 작성
+    3. AI가 6가지 점술을 종합하여 리포트 작성
     4. 결과를 확인하고 HTML로 다운로드
+    
+    #### 🔢 수비학이란?
+    
+    **운명수 (Life Path Number)**는 당신의 생년월일에 새겨진 평생의 고유 ID입니다.
+    - 1-9: 기본 숫자 (리더, 중재자, 표현가 등)
+    - 11, 22, 33: 마스터 넘버 (더 높은 차원의 에너지)
+    
+    **개인 일운수 (Personal Day Number)**는 매일 변하는 그날의 운세 에너지입니다.
+    - 생년월일 + 오늘 날짜를 조합하여 계산
+    - 오늘 하루의 흐름과 주의사항을 알려줍니다
     
     #### ⚙️ 설정 방법 (Streamlit Cloud 배포 시)
     1. Streamlit 앱 설정에서 Secrets 메뉴 선택
