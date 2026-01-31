@@ -76,8 +76,8 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* 버튼 */
-    .stButton>button { 
+    /* 버튼 스타일 수정: 폼 제출 버튼 등 모든 버튼의 글씨색을 검은색으로 강제 */
+    .stButton > button, div[data-testid="stFormSubmitButton"] > button { 
         background: linear-gradient(90deg, #FFD700 0%, #FDB931 100%); 
         color: #000000 !important;
         border: none; 
@@ -88,11 +88,12 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
     }
     
-    .stButton>button:hover {
+    .stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
         background: linear-gradient(90deg, #FDB931 0%, #FFD700 100%);
         box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
         transform: translateY(-2px);
         transition: all 0.3s ease;
+        color: #000000 !important;
     }
     
     /* Info 박스 */
@@ -124,7 +125,7 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* [수정] 입력 필드 가독성 확보 (흰 배경에 검은 글씨 강제) */
+    /* 입력 필드 가독성 확보 (흰 배경에 검은 글씨 강제) */
     input, textarea, select {
         background-color: #ffffff !important;
         color: #000000 !important;
@@ -346,14 +347,13 @@ st.sidebar.title("🔮 운세 전략가")
 st.sidebar.caption("Master Engine V5.0 Final")
 st.sidebar.markdown("---")
 
-with st.sidebar.form("input_form"):
+# [수정] enter_to_submit=False 추가
+with st.sidebar.form("input_form", enter_to_submit=False):
     name = st.text_input("이름", "방문자")
     col1, col2 = st.columns(2)
     with col1: 
-        # [수정] 텍스트 입력 방식으로 변경 (가독성 해결)
         b_date_str = st.text_input("생년월일 (예: 19900101)", "19900101")
     with col2: 
-        # [수정] 텍스트 입력 방식으로 변경
         b_time_str = st.text_input("태어난 시각 (예: 12:30)", "12:00")
     submitted = st.form_submit_button("✨ 운세 분석 시작")
 
