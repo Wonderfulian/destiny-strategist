@@ -134,12 +134,12 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("📝 고객 정보 입력")
 
 with st.sidebar.form("input_form"):
-    name = st.text_input("이름", "윤영조")
+    name = st.text_input("이름", "홍길동")
     col1, col2 = st.columns(2)
     with col1:
-        b_date = st.date_input("생년월일", datetime.date(1990, 5, 1))
+        b_date = st.date_input("생년월일", datetime.date(1990, 3, 1))
     with col2:
-        b_time = st.time_input("태어난 시각", datetime.time(13, 30))
+        b_time = st.time_input("태어난 시각", datetime.time(14, 30))
     
     submitted = st.form_submit_button("✨ 운명 분석 시작")
 
