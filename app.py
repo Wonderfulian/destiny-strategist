@@ -1,599 +1,339 @@
 import streamlit as st
-from google import genai
+import google.genai as genai
 from google.genai import types
 import datetime
 import random
 import ephem
 import pytz
 from lunar_python import Lunar, Solar
+import plotly.graph_objects as go
+from streamlit_lottie import st_lottie
+import requests
 
 # ==========================================
-# [기본 설정] 페이지 제목 및 레이아웃
+# [기본 설정] 페이지 디자인 & CSS
 # ==========================================
 st.set_page_config(
-    page_title="운명 전략가 (Master Engine v4.0)",
+    page_title="AI 운명 전략가 (V5.0 Final)",
     page_icon="🔮",
     layout="wide"
 )
 
+# [CSS] 미드나잇 골드 테마 (유지)
+st.markdown("""
+    <style>
+    .stApp { background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); color: #e0e0e0; }
+    [data-testid="stSidebar"] { background-color: #1a1a2e; border-right: 1px solid #444; }
+    h1, h2, h3 { color: #ffd700 !important; font-family: 'Times New Roman', serif; text-shadow: 0 0 10px rgba(255, 215, 0, 0.3); }
+    div[data-testid="stMetricValue"] { color: #00d2ff !important; font-weight: bold; }
+    .stButton>button { background: linear-gradient(90deg, #FFD700 0%, #FDB931 100%); color: #1a1a2e; border: none; border-radius: 20px; font-weight: bold; }
+    </style>
+    """, unsafe_allow_html=True)
+
 # ==========================================
-# [보안] API 키 설정
+# [보안] API 키
 # ==========================================
 try:
-    # Streamlit Cloud 배포 시
     MY_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
-    # 로컬 테스트용 - 여기에 직접 입력 가능
     MY_API_KEY = "" 
 
 # ==========================================
-# [함수] 수비학 (Numerology) 로직
+# [함수 1] 주역 64괘 (전체 데이터 복원)
+# ==========================================
+def get_real_iching():
+    """주역 64괘 전체 리스트 (삭제 없음)"""
+    hexagrams = [
+        "1. 중천건(乾) - 위대한 하늘, 강건함, 창조적 에너지", "2. 중지곤(坤) - 포용하는 땅, 유순함, 어머니의 품",
+        "3. 수뢰둔(屯) - 험난한 시작, 인내하며 싹을 틔움", "4. 산수몽(蒙) - 어리석음을 깨우침, 배움의 시기",
+        "5. 수천수(需) - 때를 기다림, 인내와 준비", "6. 천수송(訟) - 다툼과 소송, 물러서서 타협해야 함",
+        "7. 지수사(師) - 군대를 이끄는 리더십, 엄격한 규율", "8. 수지비(比) - 사람들과 친밀하게 어울림, 협력",
+        "9. 풍천소축(小畜) - 잠시 멈춤, 구름은 끼었으나 비는 아직 안 옴", "10. 천택리(履) - 호랑이 꼬리를 밟음, 예의와 조심성",
+        "11. 지천태(泰) - 태평성대, 하늘과 땅의 화합 (길)", "12. 천지비(否) - 막혀있는 운세, 소통이 필요함",
+        "13. 천화동인(同人) - 뜻을 같이하는 동료, 협동", "14. 화천대유(大有) - 크게 가짐, 태양이 하늘에 뜸 (대길)",
+        "15. 지산겸(謙) - 겸손하면 형통함, 자신을 낮춤", "16. 뇌지예(豫) - 미리 준비하고 즐거워함",
+        "17. 택뢰수(隨) - 흐름을 따름, 임기응변", "18. 산풍고(蠱) - 부패를 척결하고 새롭게 함",
+        "19. 지택림(臨) - 군자가 다가옴, 성대한 기운", "20. 풍지관(觀) - 냉철한 관찰, 본보기가 됨",
+        "21. 화뢰서합(噬嗑) - 방해물을 씹어 없앰, 법 집행", "22. 산화비(賁) - 아름답게 꾸밈, 외면의 화려함",
+        "23. 산지박(剝) - 깎여나감, 쇠퇴기, 기초를 다져야 함", "24. 지뢰복(復) - 다시 돌아옴, 회복의 기운",
+        "25. 천뢰무망(無妄) - 거짓 없이 진실함, 자연스러움", "26. 산천대축(大畜) - 크게 쌓음, 인재를 기름",
+        "27. 산뢰이(頤) - 올바른 양육, 말조심과 음식 조절", "28. 택풍대과(大過) - 기둥이 휨, 과도한 부담",
+        "29. 중수감(坎) - 첩첩산중, 험난한 물, 지혜로 극복", "30. 중화리(離) - 타오르는 불, 지혜와 문명, 이별",
+        "31. 택산함(咸) - 마음이 통함, 감동과 사랑", "32. 뇌풍항(恒) - 변함없이 꾸준함, 지속성",
+        "33. 천산둔(遯) - 물러나서 은둔함, 때를 기다리는 지혜", "34. 뇌천대장(大壯) - 용맹하고 씩씩함, 폭주 주의",
+        "35. 화지진(晉) - 나아가 승진함, 밝은 해가 떠오름", "36. 지화명이(明夷) - 빛이 땅에 가려짐, 고난 속의 지혜",
+        "37. 풍화가인(家人) - 가정의 화목, 본분에 충실", "38. 화택규(睽) - 서로 어긋나고 반목함, 다름을 인정",
+        "39. 수산건(蹇) - 가다가 멈춤, 어려움에 직면", "40. 뇌수해(解) - 어려움이 풀림, 해결의 실마리",
+        "41. 산택손(損) - 덜어냄, 봉사와 희생 후의 이익", "42. 풍뢰익(益) - 더함, 바람과 우뢰가 도움 (길)",
+        "43. 택천쾌(夬) - 결단하여 제거함, 과감한 결정", "44. 천풍구(姤) - 우연한 만남, 유혹을 조심",
+        "45. 택지췌(萃) - 사람들이 모여듦, 번창과 축제", "46. 지풍승(升) - 땅 속에서 나무가 자람, 상승운",
+        "47. 택수곤(困) - 곤란함, 물이 말라버린 연못", "48. 수풍정(井) - 마르지 않는 우물, 변치 않는 덕",
+        "49. 택화혁(革) - 옛것을 버리고 새롭게 고침, 혁신", "50. 화풍정(鼎) - 솥에 음식을 끓임, 안정과 쇄신",
+        "51. 중뢰진(震) - 우르릉 쾅쾅, 놀라지만 깨달음이 있음", "52. 중산간(艮) - 산처럼 멈춰 서서 안정을 찾음",
+        "53. 풍산점(漸) - 차근차근 나아감, 순서대로 진행", "54. 뇌택귀매(歸妹) - 순서가 뒤바뀜, 불안정한 관계",
+        "55. 뇌화풍(豐) - 풍요롭고 성대함, 전성기", "56. 화산여행(旅) - 나그네의 여행, 불안정하지만 자유로움",
+        "57. 중풍손(巽) - 공손하게 스며듦, 바람 같은 유연함", "58. 중택태(兌) - 기쁨과 즐거움, 연못과 소녀",
+        "59. 풍수환(渙) - 흩어짐, 근심 해소, 멀리 나아감", "60. 수택절(節) - 대나무 마디, 절제와 규칙",
+        "61. 풍택중부(中孚) - 마음속의 진실, 믿음", "62. 뇌산소과(小過) - 작은 새가 나는 형상, 겸손해야 함",
+        "63. 수화기제(旣濟) - 이미 건너감, 완성, 성취", "64. 화수미제(未濟) - 아직 건너지 못함, 미완성, 새로운 시작"
+    ]
+    return random.choice(hexagrams)
+
+# ==========================================
+# [함수 2] 점성술 (실시간 Ephem 계산 복원)
+# ==========================================
+def get_real_astrology(year, month, day, hour, minute):
+    """
+    Ephem 라이브러리를 사용하여 실제 행성의 별자리 위치를 계산합니다.
+    (단순 텍스트 출력이 아니라 실제 천문 계산 로직 적용)
+    """
+    try:
+        # 관측지 설정 (서울)
+        obs = ephem.Observer()
+        obs.lat, obs.lon = '37.5665', '126.9780'
+        # UTC 변환 (한국시간 - 9시간)
+        obs.date = datetime.datetime(year, month, day, hour, minute) - datetime.timedelta(hours=9)
+        
+        # 태양과 달 객체 생성 및 계산
+        sun = ephem.Sun(obs)
+        sun.compute(obs)
+        moon = ephem.Moon(obs)
+        moon.compute(obs)
+        
+        # 별자리 매핑 (Ephem은 별자리 이름을 바로 주지 않으므로 좌표로 매핑 필요하지만, 
+        # 여기서는 ephem.constellation 기능을 사용하여 간략화된 정확한 별자리를 가져옵니다)
+        sun_const = ephem.constellation(sun)[1] # (Abbr, Name) 중 Name 반환
+        moon_const = ephem.constellation(moon)[1]
+        
+        return {"desc": f"태양은 {sun_const}자리에, 달은 {moon_const}자리에 위치합니다."}
+    except Exception as e:
+        return {"desc": f"천문 데이터 계산 중 오류: {str(e)}"}
+
+# ==========================================
+# [함수 3] 기문둔갑 (Lunar_python 정밀 계산 복원)
+# ==========================================
+def get_real_qimen(year, month, day, hour):
+    """
+    Lunar Python 라이브러리를 사용하여 그날의 정확한 
+    재신(God of Wealth)과 희신(God of Joy) 방향을 산출합니다.
+    """
+    try:
+        # 양력을 입력받아 음력/간지 변환 객체 생성
+        solar = Solar.fromYmdHms(year, month, day, hour, 0, 0)
+        lunar = solar.getLunar()
+        
+        # 재신(재물)과 희신(기쁨)의 방향 계산
+        wealth_pos = lunar.getDayPositionCai() # 예: 震, 兌
+        joy_pos = lunar.getDayPositionXi()
+        
+        # 한자 -> 한글 매핑 (정확한 8방위)
+        direction_map = {
+            "震": "동쪽(East)", "兌": "서쪽(West)", "離": "남쪽(South)", "坎": "북쪽(North)",
+            "巽": "남동쪽(SE)", "坤": "남서쪽(SW)", "乾": "북서쪽(NW)", "艮": "북동쪽(NE)"
+        }
+        
+        wealth_str = direction_map.get(wealth_pos, wealth_pos)
+        joy_str = direction_map.get(joy_pos, joy_pos)
+        
+        return {"desc": f"💰 재물운 방향: {wealth_str} / 🎉 성공운 방향: {joy_str}"}
+    except Exception as e:
+        return {"desc": "방위 데이터 계산 실패"}
+
+# ==========================================
+# [함수 4] 타로 (78장 완전판 유지)
+# ==========================================
+def get_real_tarot():
+    """타로 78장 완전판 (Full Deck)"""
+    major = [
+        "0. The Fool (바보)", "I. The Magician (마법사)", "II. The High Priestess (여사제)",
+        "III. The Empress (여황제)", "IV. The Emperor (황제)", "V. The Hierophant (교황)",
+        "VI. The Lovers (연인)", "VII. The Chariot (전차)", "VIII. Strength (힘)",
+        "IX. The Hermit (은둔자)", "X. Wheel of Fortune (운명의 수레바퀴)", "XI. Justice (정의)",
+        "XII. The Hanged Man (매달린 남자)", "XIII. Death (죽음)", "XIV. Temperance (절제)",
+        "XV. The Devil (악마)", "XVI. The Tower (탑)", "XVII. The Star (별)",
+        "XVIII. The Moon (달)", "XIX. The Sun (태양)", "XX. Judgement (심판)", "XXI. The World (세계)"
+    ]
+    suits = {"Wands": "행동", "Cups": "감정", "Swords": "이성", "Pentacles": "물질"}
+    ranks = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Page", "Knight", "Queen", "King"]
+    minor = [f"{r} of {s} ({k})" for s, k in suits.items() for r in ranks]
+    return random.choice(major + minor)
+
+# ==========================================
+# [함수 5] 수비학 & 사주 (기존 로직 유지)
 # ==========================================
 def reduce_to_single_digit(num, check_master=True):
-    """
-    숫자를 한 자리로 줄이기 (마스터 넘버 11, 22, 33 예외 처리)
-    """
     while num > 9:
-        # 마스터 넘버 체크
-        if check_master and num in [11, 22, 33]:
-            return num
-        # 각 자릿수 합산
+        if check_master and num in [11, 22, 33, 44]: return num
         num = sum(int(digit) for digit in str(num))
     return num
 
 def calculate_life_path_number(year, month, day):
-    """
-    운명수 (Life Path Number) 계산
-    생년월일의 모든 숫자를 더해서 한 자리로 줄임 (마스터 넘버 제외)
-    """
-    # 연도, 월, 일 각각의 숫자 합산
-    year_sum = sum(int(d) for d in str(year))
-    month_sum = sum(int(d) for d in str(month))
-    day_sum = sum(int(d) for d in str(day))
-    
-    # 전체 합산
-    total = year_sum + month_sum + day_sum
-    
-    # 한 자리로 줄이기 (마스터 넘버 체크)
-    life_path = reduce_to_single_digit(total, check_master=True)
-    
-    return life_path
+    total = sum(int(d) for d in str(year)) + sum(int(d) for d in str(month)) + sum(int(d) for d in str(day))
+    return reduce_to_single_digit(total, check_master=True)
 
 def calculate_personal_day_number(birth_month, birth_day, current_year, current_month, current_day):
-    """
-    개인 일운수 (Personal Day Number) 계산
-    [생월 + 생일] + [현재 년도 + 현재 월 + 현재 일]
-    """
-    # 생월 + 생일
-    birth_sum = birth_month + birth_day
-    
-    # 현재 연도 각 자릿수 합산
-    year_sum = sum(int(d) for d in str(current_year))
-    
-    # 현재 월 + 현재 일
-    date_sum = current_month + current_day
-    
-    # 전체 합산
-    total = birth_sum + year_sum + date_sum
-    
-    # 한 자리로 줄이기 (일운수는 보통 마스터 넘버도 줄임)
-    personal_day = reduce_to_single_digit(total, check_master=False)
-    
-    return personal_day
+    total = (birth_month + birth_day) + sum(int(d) for d in str(current_year)) + (current_month + current_day)
+    return reduce_to_single_digit(total, check_master=False)
 
 def get_numerology_meaning(number, is_life_path=True):
-    """
-    수비학 숫자별 의미 데이터베이스
-    """
     meanings = {
-        1: {
-            "name": "리더 (The Leader)",
-            "keywords": "시작, 독립, 개척",
-            "desc": "남을 이끄는 리더십, 자존심, 강한 추진력. 새로운 시작을 두려워하지 않는 개척자."
-        },
-        2: {
-            "name": "중재자 (The Mediator)",
-            "keywords": "협력, 조화, 섬세",
-            "desc": "관계 중심, 타인을 돕는 서포터, 평화주의자. 조화와 균형을 추구하는 외교관."
-        },
-        3: {
-            "name": "표현가 (The Expresser)",
-            "keywords": "창조, 즐거움, 표현",
-            "desc": "예술적 끼, 유머, 낙천적. 말과 글에 능하며 창의성이 넘치는 아티스트."
-        },
-        4: {
-            "name": "건축가 (The Builder)",
-            "keywords": "안정, 질서, 성실",
-            "desc": "논리적, 체계적, 현실적인 노력파. 견고한 기반을 만드는 실용주의자."
-        },
-        5: {
-            "name": "모험가 (The Adventurer)",
-            "keywords": "변화, 자유, 다양성",
-            "desc": "구속을 싫어함, 여행, 적응력, 홍보/마케팅에 능함. 자유로운 영혼의 탐험가."
-        },
-        6: {
-            "name": "양육자 (The Nurturer)",
-            "keywords": "책임, 봉사, 사랑",
-            "desc": "가정적, 모성애/부성애, 미적 감각, 헌신. 타인을 돌보는 수호자."
-        },
-        7: {
-            "name": "탐구자 (The Seeker)",
-            "keywords": "분석, 통찰, 신비",
-            "desc": "혼자만의 시간 중시, 전문가 기질, 철학적 사고. 진리를 찾는 현자."
-        },
-        8: {
-            "name": "지배자 (The Powerhouse)",
-            "keywords": "권력, 성공, 물질",
-            "desc": "비즈니스 감각, 목표 지향, 현실적 보상 추구. 성공을 거머쥐는 실행자."
-        },
-        9: {
-            "name": "인도주의자 (The Humanitarian)",
-            "keywords": "완성, 포용, 이상",
-            "desc": "인류애, 넓은 시야, 예술과 봉사, 마무리. 세상을 품는 박애주의자."
-        },
-        11: {
-            "name": "마스터 직관 (The Master Intuitive)",
-            "keywords": "직관, 영감, 비전",
-            "desc": "2의 조화에 영적 통찰력이 더해진 상태. 영감을 받아 비전을 제시하는 선구자."
-        },
-        22: {
-            "name": "마스터 건축가 (The Master Builder)",
-            "keywords": "실행, 위대함, 현실화",
-            "desc": "4의 성실함에 큰 꿈을 현실로 만드는 힘이 더해짐. 위대한 것을 건설하는 지도자."
-        },
-        33: {
-            "name": "마스터 스승 (The Master Teacher)",
-            "keywords": "헌신, 가르침, 성자",
-            "desc": "6의 사랑이 승화되어 인류를 위해 헌신하는 성자의 에너지. 무조건적 사랑의 화신."
-        }
+        1: "개척과 독립의 리더", 2: "조화와 협력의 중재자", 3: "창조와 표현의 예술가",
+        4: "안정과 질서의 건축가", 5: "변화와 자유의 모험가", 6: "책임과 봉사의 보호자",
+        7: "분석과 통찰의 탐구자", 8: "성취와 권력의 지배자", 9: "완성과 포용의 멘토",
+        11: "영적 직관의 마스터", 22: "위대한 실행의 마스터", 33: "헌신적 사랑의 마스터"
     }
-    
-    info = meanings.get(number, meanings[1])
-    
-    if is_life_path:
-        return f"{number} - {info['name']}: {info['desc']}"
-    else:
-        return f"오늘은 {number}의 에너지 ({info['keywords']}): {info['desc']}"
-
-# ==========================================
-# [함수] 기존 5대 알고리즘 로직
-# ==========================================
-def get_real_iching():
-    """주역 64괘 전체 리스트"""
-    hexagrams = [
-        "1. 중천건(乾) - 강건함, 리더십, 창조", "2. 중지곤(坤) - 포용, 유순함, 따름",
-        "3. 수뢰둔(屯) - 험난한 시작, 인내", "4. 산수몽(蒙) - 교육 필요, 어리석음",
-        "5. 수천수(需) - 기다림, 때를 기다림", "6. 천수송(訟) - 다툼, 소송, 물러섬",
-        "7. 지수사(師) - 군대, 리더십, 엄격함", "8. 수지비(比) - 친밀함, 협력",
-        "9. 풍천소축(小畜) - 잠시 멈춤, 준비", "10. 천택리(履) - 조심스러움, 예의",
-        "11. 지천태(泰) - 태평성대, 화합(길)", "12. 천지비(否) - 막힘, 불통",
-        "13. 천화동인(同人) - 협동, 동업", "14. 화천대유(大有) - 큰 성공, 풍요(대길)",
-        "15. 지산겸(謙) - 겸손, 낮춤", "16. 뇌지예(豫) - 즐거움, 미리 준비",
-        "17. 택뢰수(隨) - 따름, 순응", "18. 산풍고(蠱) - 부패, 개혁",
-        "19. 지택림(臨) - 군림, 접근", "20. 풍지관(觀) - 관찰, 통찰",
-        "21. 화뢰서합(噬嗑) - 방해물 제거", "22. 산화비(賁) - 꾸밈, 장식",
-        "23. 산지박(剝) - 깎임, 쇠퇴", "24. 지뢰복(復) - 회복, 돌아옴",
-        "25. 천뢰무망(無妄) - 진실, 자연스러움", "26. 산천대축(大畜) - 큰 쌓임",
-        "27. 산뢰이(頤) - 기름, 양육", "28. 택풍대과(大過) - 과부하, 무거움",
-        "29. 중수감(坎) - 험난함, 함정", "30. 중화리(離) - 밝음, 지혜, 이별",
-        "31. 택산함(咸) - 감응, 사랑", "32. 뇌풍항(恒) - 변함없음, 지속",
-        "33. 천산둔(遯) - 은둔, 물러남", "34. 뇌천대장(大壯) - 씩씩함, 폭주 조심",
-        "35. 화지진(晉) - 나아감, 승진", "36. 지화명이(明夷) - 지혜를 감춤",
-        "37. 풍화가인(家人) - 가정, 본분", "38. 화택규(睽) - 어긋남, 반목",
-        "39. 수산건(蹇) - 고난, 멈춤", "40. 뇌수해(解) - 해결, 해방",
-        "41. 산택손(損) - 덜어냄, 봉사", "42. 풍뢰익(益) - 더함, 이익(길)",
-        "43. 택천쾌(夬) - 결단, 제거", "44. 천풍구(姤) - 만남, 유혹 조심",
-        "45. 택지췌(萃) - 모임, 번창", "46. 지풍승(升) - 상승, 발전",
-        "47. 택수곤(困) - 곤란, 시련", "48. 수풍정(井) - 우물, 변치 않음",
-        "49. 택화혁(革) - 혁신, 변화", "50. 화풍정(鼎) - 안정, 쇄신",
-        "51. 중뢰진(震) - 벼락, 놀람", "52. 중산간(艮) - 산, 멈춤",
-        "53. 풍산점(漸) - 점진적 발전", "54. 뇌택귀매(歸妹) - 어긋난 결혼",
-        "55. 뇌화풍(豐) - 풍성함, 전성기", "56. 화산여행(旅) - 여행, 불안정",
-        "57. 중풍손(巽) - 겸손, 바람", "58. 중택태(兌) - 기쁨, 연못",
-        "59. 풍수환(渙) - 흩어짐, 해소", "60. 수택절(節) - 절제, 규칙",
-        "61. 풍택중부(中孚) - 믿음, 진심", "62. 뇌산소과(小過) - 작은 지나침",
-        "63. 수화기제(旣濟) - 완성, 성취", "64. 화수미제(未濟) - 미완성, 새출발"
-    ]
-    return random.choice(hexagrams)
-
-def get_real_tarot():
-    """타로 78장 전체"""
-    major = [
-        "The Fool (0) - 새로운 시작", "The Magician (I) - 창조력", "The High Priestess (II) - 직관",
-        "The Empress (III) - 풍요", "The Emperor (IV) - 권위", "The Hierophant (V) - 전통",
-        "The Lovers (VI) - 사랑과 선택", "The Chariot (VII) - 승리", "Strength (VIII) - 용기",
-        "The Hermit (IX) - 성찰", "Wheel of Fortune (X) - 운명의 전환", "Justice (XI) - 정의",
-        "The Hanged Man (XII) - 희생", "Death (XIII) - 변화와 재생", "Temperance (XIV) - 절제",
-        "The Devil (XV) - 집착", "The Tower (XVI) - 붕괴와 깨달음", "The Star (XVII) - 희망",
-        "The Moon (XVIII) - 환상", "The Sun (XIX) - 기쁨", "Judgement (XX) - 심판", "The World (XXI) - 완성"
-    ]
-    suits = ["Wands (열정)", "Cups (감정)", "Swords (이성)", "Pentacles (현실)"]
-    ranks = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Page", "Knight", "Queen", "King"]
-    minor = [f"{r} of {s}" for s in suits for r in ranks]
-    return random.choice(major + minor)
+    return f"{number} ({meanings.get(number, '알 수 없는 숫자')})"
 
 def get_real_saju(year, month, day, hour, minute):
-    """lunar_python으로 정확한 사주팔자 계산"""
     try:
         solar = Solar.fromYmdHms(year, month, day, hour, minute, 0)
         lunar = solar.getLunar()
         bazi = lunar.getBaZi()
         day_master = bazi[2][0] if len(bazi[2]) > 0 else "갑"
-        jieqi = lunar.getJieQi()
-        return {
-            "text": f"{bazi[0]}년 {bazi[1]}월 {bazi[2]}일 {bazi[3]}시",
-            "day_master": day_master,
-            "desc": f"본원(日干)은 '{day_master}'이며, 절기는 '{jieqi}'입니다."
-        }
-    except Exception as e:
-        return {"text": "계산 불가", "day_master": "갑", "desc": f"사주 계산 오류: {str(e)}"}
+        return {"text": f"{bazi[0]}년 {bazi[1]}월 {bazi[2]}일", "day_master": day_master, "desc": f"일간(본질): {day_master}"}
+    except:
+        return {"text": "정보 없음", "day_master": "갑", "desc": "계산 오류"}
 
-def get_real_astrology(year, month, day, hour, minute):
-    """ephem으로 천문 계산"""
-    try:
-        obs = ephem.Observer()
-        obs.lat, obs.lon = '37.5665', '126.9780' # Seoul
-        obs.date = datetime.datetime(year, month, day, hour, minute) - datetime.timedelta(hours=9)
-        sun = ephem.Sun(obs); sun.compute(obs)
-        moon = ephem.Moon(obs); moon.compute(obs)
-        return {"desc": f"태양[{ephem.constellation(sun)[1]}], 달[{ephem.constellation(moon)[1]}]"}
-    except Exception as e:
-        return {"desc": f"천문 계산 오류: {str(e)}"}
+# [시각화 함수] 오행 차트 (랜덤성 유지)
+def draw_five_elements_chart(day_master):
+    categories = ['목(나무)', '화(불)', '토(흙)', '금(쇠)', '수(물)']
+    weights = [3, 3, 3, 3, 3] # 기본 점수
+    # 일간에 따른 가중치
+    if day_master in ['갑', '을']: weights[0] += 2
+    elif day_master in ['병', '정']: weights[1] += 2
+    elif day_master in ['무', '기']: weights[2] += 2
+    elif day_master in ['경', '신']: weights[3] += 2
+    elif day_master in ['임', '계']: weights[4] += 2
+    
+    values = [min(5, w + random.randint(-1, 1)) for w in weights]
+    
+    fig = go.Figure()
+    fig.add_trace(go.Scatterpolar(
+        r=values, theta=categories, fill='toself', name='오행',
+        line_color='#ffd700', fillcolor='rgba(255, 215, 0, 0.3)'
+    ))
+    fig.update_layout(
+        polar=dict(radialaxis=dict(visible=True, range=[0, 6], showticklabels=False, linecolor='#444'), bgcolor='rgba(0,0,0,0)'),
+        paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(l=40, r=40, t=20, b=20), showlegend=False, height=250
+    )
+    return fig
 
-def get_real_qimen(year, month, day, hour):
-    """lunar_python으로 기문둔갑 길방 계산"""
+def load_lottieurl(url):
     try:
-        solar = Solar.fromYmdHms(year, month, day, hour, 0, 0)
-        lunar = solar.getLunar()
-        wealth_pos = lunar.getDayPositionCai()
-        joy_pos = lunar.getDayPositionXi()
-        d_map = {"震":"동(E)","兌":"서(W)","離":"남(S)","坎":"북(N)","巽":"남동(SE)","坤":"남서(SW)","乾":"북서(NW)","艮":"북동(NE)"}
-        return {"desc": f"재물 방향: {d_map.get(wealth_pos, wealth_pos)} / 성공 방향: {d_map.get(joy_pos, joy_pos)}"}
-    except Exception as e:
-        return {"desc": f"기문둔갑 계산 오류: {str(e)}"}
+        r = requests.get(url); 
+        return r.json() if r.status_code == 200 else None
+    except: return None
 
 # ==========================================
-# [사이드바] 사용자 입력 UI
+# [UI] 사이드바 및 메인
 # ==========================================
 st.sidebar.title("🔮 AI 운명 전략가")
+st.sidebar.caption("Master Engine V5.0 Final")
 st.sidebar.markdown("---")
-st.sidebar.subheader("📝 고객 정보 입력")
 
 with st.sidebar.form("input_form"):
-    name = st.text_input("이름", "홍길동")
+    name = st.text_input("이름", "방문자")
     col1, col2 = st.columns(2)
-    with col1:
-        b_date = st.date_input("생년월일", datetime.date(1990, 3, 1))
-    with col2:
-        b_time = st.time_input("태어난 시각", datetime.time(14, 30))
-    
+    with col1: b_date = st.date_input("생년월일", datetime.date(1990, 1, 1))
+    with col2: b_time = st.time_input("태어난 시각", datetime.time(12, 0))
     submitted = st.form_submit_button("✨ 운명 분석 시작")
 
-st.sidebar.markdown("---")
-st.sidebar.info("v4.0 (2026.01) | 수비학 추가 | Powered by Google Gemini")
+col_h1, col_h2 = st.columns([3, 1])
+with col_h1:
+    st.title(f"🌌 {name}님을 위한 심층 운명 리포트")
+    st.markdown("##### 사주 × 점성술 × 수비학 × 주역 × 기문둔갑 × 타로 통합 분석")
+with col_h2:
+    lottie_json = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_tijmpky4.json")
+    if lottie_json: st_lottie(lottie_json, height=120, key="crystal_ball")
 
-# ==========================================
-# [메인] 실행 로직
-# ==========================================
-st.title("🌌 AI 운명 전략가 : Master Engine")
-st.markdown("##### 사주명리 × 점성술 × 기문둔갑 × 주역 × 타로 × 수비학 통합 분석")
 st.divider()
 
 if submitted:
-    # 1. API 키 확인
     if not MY_API_KEY:
         st.error("🚨 API 키가 설정되지 않았습니다.")
-        st.info("💡 Streamlit Settings > Secrets에 'GOOGLE_API_KEY'를 입력하거나, 코드 17번째 줄에 직접 입력하세요.")
     else:
-        try:
-            # 클라이언트 초기화
-            client = genai.Client(api_key=MY_API_KEY)
-            
-            # 2. 알고리즘 계산
-            now = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-            by, bm, bd = b_date.year, b_date.month, b_date.day
-            bh, bmin = b_time.hour, b_time.minute
-            
-            with st.spinner("🔮 운명 데이터를 계산하고 있습니다..."):
-                # 기존 5대 알고리즘
-                saju = get_real_saju(by, bm, bd, bh, bmin)
-                astro = get_real_astrology(by, bm, bd, bh, bmin)
-                qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
-                iching = get_real_iching()
-                tarot = get_real_tarot()
-                
-                # 🆕 수비학 계산
-                life_path = calculate_life_path_number(by, bm, bd)
-                personal_day = calculate_personal_day_number(bm, bd, now.year, now.month, now.day)
-                life_path_meaning = get_numerology_meaning(life_path, is_life_path=True)
-                personal_day_meaning = get_numerology_meaning(personal_day, is_life_path=False)
-            
-            # 3. 대시보드 출력
-            st.success("✅ 분석 완료! 정밀 데이터가 산출되었습니다.")
-            
-            # 첫 번째 줄: 기존 4개
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("🀄 본원(일간)", saju['day_master'])
-            
-            qimen_wealth = qimen['desc'].split('/')[0].split(':')[1].strip() if '/' in qimen['desc'] else "동쪽"
-            col2.metric("🧭 재물 방위", qimen_wealth)
-            
-            col3.metric("☯️ 주역 괘", iching.split('.')[0] if '.' in iching else iching[:10])
-            col4.metric("🃏 타로", tarot.split('(')[0].strip() if '(' in tarot else tarot[:20])
-            
-            # 🆕 두 번째 줄: 수비학
-            col5, col6 = st.columns(2)
-            col5.metric("🔢 운명수 (Life Path)", f"{life_path}", 
-                       help="태어난 날짜에 새겨진 평생의 고유 ID")
-            col6.metric("📅 오늘의 일운수", f"{personal_day}",
-                       help="오늘 하루의 에너지 흐름")
-            
-            with st.expander("🔍 상세 데이터(Fact Check) 보기"):
-                st.code(f"""
-[분석 시점] {now.strftime('%Y-%m-%d %H:%M (KST)')}
-
-[사주팔자] {saju['text']} 
-           {saju['desc']}
-
-[천문정보] {astro['desc']}
-
-[기문둔갑] {qimen['desc']}
-
-[주역결과] {iching}
-
-[타로결과] {tarot}
-
-[수비학]
-- 운명수 (Life Path Number): {life_path_meaning}
-- 오늘의 일운수 (Personal Day): {personal_day_meaning}
-                """, language="text")
-
-            # 4. AI 리포트 생성 프롬프트
-            prompt = f"""
-당신은 '수석 운명 전략가'입니다. 다음 팩트 데이터를 바탕으로 {name} 님의 운명 전략 리포트를 작성하세요.
-
-[팩트 데이터]
-- 사주팔자: {saju['text']} ({saju['desc']})
-- 천문 정보: {astro['desc']}
-- 기문둔갑: {qimen['desc']}
-- 주역 64괘: {iching}
-- 타로 78장: {tarot}
-- 🆕 수비학 운명수: {life_path_meaning}
-- 🆕 수비학 오늘의 일운수: {personal_day_meaning}
-- 분석 시점: {now.strftime('%Y년 %m월 %d일 %H시 %M분 (KST)')}
-
-[작성 가이드]
-- 분량: 2000-2500자 (매우 상세하고 깊이 있게)
-- 형식: 마크다운(Markdown) - ##, **, - 등 활용
-- 어조: 전문적이면서도 따뜻한 멘토의 말투
-
-[필수 목차]
-## 🎯 운세 대시보드
-- 오늘의 종합 운세 점수 (100점 만점)
-- 애정운, 재물운, 사업운, 건강운 각각 평가
-
-## 🔢 수비학 심층 분석 (NEW!)
-- 운명수 {life_path}의 의미: 당신의 인생 목적과 타고난 재능
-- 오늘의 일운수 {personal_day}의 의미: 오늘 하루의 에너지와 주의사항
-- 운명수와 오늘의 일운수가 어떻게 상호작용하는지 분석
-
-## ⚡ 기문둔갑 시공간 전략
-- 오늘의 골든타임 (몇 시가 가장 좋은지 구체적으로)
-- 길방 활용법: {qimen['desc']} 이 방향을 어떻게 활용할지
-- 구체적인 행동 계획
-
-## 💌 주역과 타로의 심층 메시지
-- 주역 {iching}이 전하는 의미와 조언
-- 타로 {tarot}의 해석과 실천 방법
-- 두 점술의 공통 메시지
-
-## 🌟 종합 해석: 6가지 점술이 말하는 오늘
-- 사주명리, 점성술, 기문둔갑, 주역, 타로, 수비학이 공통적으로 말하는 핵심 메시지
-- 특히 수비학 운명수 {life_path}와 일운수 {personal_day}가 다른 점술들과 어떻게 연결되는지
-- 6가지 관점을 종합한 최종 조언
-
-## 📋 오늘의 행동 강령
-- 꼭 해야 할 일 3가지 (구체적으로)
-- 절대 피해야 할 일 3가지
-- 오늘의 행운 아이템 (색상, 숫자, 음식, 방향 등)
-
-각 섹션을 풍부하고 구체적으로 작성하되, 실용적이고 실행 가능한 조언을 담아주세요.
-특히 수비학 섹션에서는 운명수와 일운수의 상호작용을 깊이 있게 분석해주세요.
-"""
-            
-            st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
-            
-            # 5. Gemini API 호출
-            with st.spinner("⚡ Gemini AI가 6가지 점술을 종합 분석 중입니다... (약 15-20초 소요)"):
-                try:
-                    # 1차: gemini-2.5-flash
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=prompt
-                    )
-                    full_response = response.text
-                    
-                except Exception as e1:
-                    st.warning(f"⚠️ gemini-2.5-flash 오류: {str(e1)[:100]}")
-                    st.info("gemini-1.5-pro로 재시도 중...")
-                    
-                    try:
-                        # 2차: gemini-1.5-pro
-                        response = client.models.generate_content(
-                            model="gemini-1.5-pro",
-                            contents=prompt
-                        )
-                        full_response = response.text
-                        
-                    except Exception as e2:
-                        st.error(f"❌ 모든 모델 접속 실패")
-                        st.error(f"오류 상세: {str(e2)}")
-                        st.info("""
-                        **문제 해결 방법:**
-                        1. API 키가 올바른지 확인 (https://aistudio.google.com/apikey)
-                        2. API 키에 Gemini API 사용 권한이 있는지 확인
-                        3. 할당량(Quota)을 초과하지 않았는지 확인
-                        4. 인터넷 연결 상태 확인
-                        """)
-                        full_response = ""
-
-            # 6. 결과 출력
-            if full_response:
-                st.markdown(full_response)
-                
-                # HTML 다운로드 파일 생성
-                html_content = f"""
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{name}님의 운세 리포트</title>
-    <style>
-        body {{
-            font-family: 'Noto Serif KR', serif;
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 40px;
-            line-height: 1.8;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        }}
-        .container {{
-            background: white;
-            padding: 50px;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }}
-        h1 {{
-            color: #667eea;
-            text-align: center;
-            border-bottom: 4px solid #764ba2;
-            padding-bottom: 20px;
-        }}
-        h2 {{
-            color: #764ba2;
-            border-left: 6px solid #667eea;
-            padding-left: 15px;
-            margin-top: 30px;
-        }}
-        .data-box {{
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 5px solid #667eea;
-        }}
-        .numerology-box {{
-            background: linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%);
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
-            border-left: 5px solid #e17055;
-        }}
-        strong {{
-            color: #667eea;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🔮 {name}님의 운명 전략 리포트</h1>
-        <p style="text-align: center; color: #666;">분석 시점: {now.strftime('%Y년 %m월 %d일 %H시 %M분 (KST)')}</p>
+        # 데이터 계산
+        now = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+        by, bm, bd = b_date.year, b_date.month, b_date.day
+        bh, bmin = b_time.hour, b_time.minute
         
-        <div class="data-box">
-            <h3>📊 팩트 데이터</h3>
-            <p><strong>🀄 사주팔자:</strong> {saju['text']}</p>
-            <p><strong>📖 사주 해석:</strong> {saju['desc']}</p>
-            <p><strong>🌙 천문:</strong> {astro['desc']}</p>
-            <p><strong>🧭 기문둔갑:</strong> {qimen['desc']}</p>
-            <p><strong>☯️ 주역:</strong> {iching}</p>
-            <p><strong>🃏 타로:</strong> {tarot}</p>
-        </div>
+        # 각 모듈 호출 (완전판 로직 적용됨)
+        saju = get_real_saju(by, bm, bd, bh, bmin)
+        astro = get_real_astrology(by, bm, bd, bh, bmin)
+        qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
+        iching = get_real_iching()
+        tarot = get_real_tarot()
+        life_path = calculate_life_path_number(by, bm, bd)
+        personal_day = calculate_personal_day_number(bm, bd, now.year, now.month, now.day)
         
-        <div class="numerology-box">
-            <h3>🔢 수비학 (Numerology)</h3>
-            <p><strong>운명수 (Life Path Number):</strong> {life_path_meaning}</p>
-            <p><strong>오늘의 일운수 (Personal Day):</strong> {personal_day_meaning}</p>
-        </div>
+        # 대시보드 출력
+        st.success("✅ 정밀 데이터 산출 완료 (All Engines Active)")
         
-        <hr>
+        c1, c2 = st.columns([1, 2])
+        with c1:
+            st.markdown("###### 📊 오행 에너지 차트")
+            fig = draw_five_elements_chart(saju['day_master'])
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
-        {full_response.replace('##', '<h2>').replace('**', '<strong>').replace('**', '</strong>').replace('- ', '<br>• ').replace('\n', '<br>')}
+        with c2:
+            st.markdown("###### 🔑 핵심 운명 코드")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("일간", saju['day_master'])
+            m2.metric("운명수", life_path)
+            m3.metric("오늘의 수", personal_day)
+            
+            st.info(f"🧭 **기문둔갑 방위:** {qimen['desc']}")
+            st.info(f"🪐 **점성술 배치:** {astro['desc']}")
+            st.info(f"☯️ **주역 괘:** {iching}")
+
+# 4. AI 리포트 생성 (행동강령/금기사항/행운아이템 완벽 포함)
+        prompt = f"""
+        당신은 '대한민국 최고의 운명 전략가'입니다. 
+        사용자 {name}님의 사주, 점성술, 수비학, 기문둔갑 데이터를 종합하여 
+        **인생을 바꾸는 하루 전략 리포트**를 작성하세요.
+
+        [분석 데이터]
+        - 🀄 사주팔자: {saju['text']} ({saju['desc']}) -> 오늘 나의 기운 분석
+        - 🔢 수비학: 운명수 {life_path}, 일운수 {personal_day} -> 숫자 에너지의 조화
+        - 🧭 기문둔갑: {qimen['desc']} -> 이 방위를 활용할 전략
+        - 🌌 점성술/주역/타로: {astro['desc']} / {iching} / {tarot}
+
+        [필수 포함 목차 & 작성 가이드]
+        반드시 아래 목차와 형식을 그대로 따르세요. 추상적인 말 대신 '지금 당장 할 수 있는' 구체적인 조언을 해야 합니다.
+
+        ## 1. 🎯 오늘의 종합 운세 (전반적인 흐름과 점수)
+        ## 2. 🔢 수비학 × 사주 심층 분석 (오늘의 에너지)
+        ## 3. ⚡ 기문둔갑 시공간 전략 (골든타임과 방위 활용)
+        ## 4. 💌 주역과 타로가 전하는 메시지
         
-        <br><br>
-        <div style="text-align: center; color: #999; font-size: 0.9em; border-top: 2px solid #eee; padding-top: 20px;">
-            <p>Powered by Google Gen AI SDK (2026년 1월)</p>
-            <p>AI Fortune Master Engine v4.0 - 수비학 포함</p>
-        </div>
-    </div>
-</body>
-</html>
-"""
-                
-                st.download_button(
-                    label="💾 리포트 다운로드 (HTML)",
-                    data=html_content,
-                    file_name=f"{name}_Fortune_Report_{now.strftime('%Y%m%d_%H%M')}.html",
-                    mime="text/html"
+        ## 5. 📋 오늘의 행동 강령 (가장 중요!)
+        *이 부분은 반드시 아래 양식대로 작성하세요.*
+        
+        ### ✅ 꼭 해야 할 일 3가지
+        1. (구체적인 행동)
+        2. (구체적인 행동)
+        3. (구체적인 행동)
+
+        ### ❌ 절대 피해야 할 일 3가지
+        1. (구체적인 주의사항)
+        2. (구체적인 주의사항)
+        3. (구체적인 주의사항)
+
+        ### 🍀 오늘의 행운 아이템
+        - **색상:** (오늘의 기운을 살리는 색)
+        - **숫자:** (행운의 숫자)
+        - **음식:** (개운 음식)
+        - **방향:** (기문둔갑 기반 길방)
+        """
+        
+        st.subheader("📜 AI 수석 전략가의 심층 해석")
+        with st.spinner("AI가 운명의 코드를 분석하여 행동 강령을 도출 중입니다..."):
+            try:
+                client = genai.Client(api_key=MY_API_KEY)
+                response = client.models.generate_content(
+                    model="gemini-1.5-flash", 
+                    contents=prompt
                 )
-                
-                st.success("✅ 분석이 완료되었습니다! 위의 버튼을 클릭하여 리포트를 다운로드하세요.")
-
-        except Exception as e:
-            st.error(f"⚠️ 시스템 오류가 발생했습니다.")
-            st.error(f"오류 내용: {str(e)}")
-            st.info("""
-            **디버깅 힌트:**
-            - API 키가 올바르게 설정되었는지 확인하세요
-            - lunar_python 라이브러리가 설치되었는지 확인하세요
-            - 인터넷 연결을 확인하세요
-            """)
-            
-            # 디버깅용 상세 정보
-            import traceback
-            with st.expander("🔧 개발자용 상세 오류 로그"):
-                st.code(traceback.format_exc())
-
-else:
-    # 초기 화면
-    st.info("👈 왼쪽 사이드바에 정보를 입력하고 '✨ 운명 분석 시작' 버튼을 눌러주세요.")
-    
-    st.markdown("""
-    ### 🌟 이 앱의 특징
-    
-    - **정확한 사주팔자 계산**: lunar_python 라이브러리 사용
-    - **실시간 천문 분석**: ephem으로 태양/달의 위치 계산
-    - **기문둔갑 길방 계산**: 오늘의 재물 방향과 성공 방향 제시
-    - **주역 64괘**: 전통 동양 철학의 지혜
-    - **타로 78장**: 서양 점술의 통찰
-    - **🆕 수비학 (Numerology)**: 운명수와 개인 일운수 계산
-    - **AI 종합 분석**: Google Gemini가 6가지 점술을 통합하여 맞춤형 조언 제공
-    
-    ---
-    
-    #### 📋 사용 방법
-    1. 왼쪽 사이드바에 이름과 생년월일시를 입력
-    2. '운명 분석 시작' 버튼 클릭
-    3. AI가 6가지 점술을 종합하여 리포트 작성
-    4. 결과를 확인하고 HTML로 다운로드
-    
-    #### 🔢 수비학이란?
-    
-    **운명수 (Life Path Number)**는 당신의 생년월일에 새겨진 평생의 고유 ID입니다.
-    - 1-9: 기본 숫자 (리더, 중재자, 표현가 등)
-    - 11, 22, 33: 마스터 넘버 (더 높은 차원의 에너지)
-    
-    **개인 일운수 (Personal Day Number)**는 매일 변하는 그날의 운세 에너지입니다.
-    - 생년월일 + 오늘 날짜를 조합하여 계산
-    - 오늘 하루의 흐름과 주의사항을 알려줍니다
-    
-    #### ⚙️ 설정 방법 (Streamlit Cloud 배포 시)
-    1. Streamlit 앱 설정에서 Secrets 메뉴 선택
-    2. 다음 형식으로 API 키 입력:
-    ```
-    GOOGLE_API_KEY = "your-api-key-here"
-    ```
-    3. API 키 발급: https://aistudio.google.com/apikey
-    """)
-    
-    st.warning("⚠️ 이 앱은 참고용 콘텐츠를 제공하며, 실제 운세나 미래를 예측하는 것이 아닙니다.")
+                st.markdown(response.text)
+            except Exception as e:
+                st.error(f"분석 중 오류 발생: {e}")
