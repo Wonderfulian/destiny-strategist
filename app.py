@@ -413,7 +413,7 @@ if submitted:
             st.info(f"☯️ **주역 괘:** {iching}")
 
 # 4. AI 리포트 생성 프롬프트
-prompt = f"""
+        prompt = f"""
 당신은 대한민국 최고의 운명 전략가입니다. {name}님을 위한 **오늘 하루 실전 가이드**를 작성하세요.
 
 [데이터]
@@ -437,7 +437,7 @@ prompt = f"""
 **점수:** ___/100점
 **한 줄 요약:** (오늘을 한 문장으로)
 
-오늘의 에너지를 비유하자면 "___에 비유할 수 있습니다.
+오늘의 에너지를 비유하자면 "___"에 비유할 수 있습니다.
 전반적으로 ___한 흐름이 예상됩니다.
 
 **영역별 운세:**
@@ -560,24 +560,23 @@ prompt = f"""
 내일은 일운수가 ___로 바뀌니, ___를 준비하세요.
 """
 
-st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
+        st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
 
-with st.spinner("⚡ Gemini 2.5 Flash가 운명의 코드를 분석 중입니다..."):
-    try:
-        client = genai.Client(api_key=MY_API_KEY)
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
-        
-        if response.text:
-            st.markdown(response.text)
-        else:
-            st.warning("AI 리포트 생성에 실패했습니다. 다시 시도해주세요.")
-            
-    except Exception as e:
-        st.error(f"분석 중 오류 발생: {e}")
-        """
+        with st.spinner("⚡ Gemini 2.5 Flash가 운명의 코드를 분석 중입니다..."):
+            try:
+                client = genai.Client(api_key=MY_API_KEY)
+                response = client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt
+                )
+                
+                if response.text:
+                    st.markdown(response.text)
+                else:
+                    st.warning("AI 리포트 생성에 실패했습니다. 다시 시도해주세요.")
+                    
+            except Exception as e:
+                st.error(f"분석 중 오류 발생: {e}")
         
         st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
         with st.spinner("Gemini 2.5 Flash가 운명의 코드를 정밀 분석 중입니다..."):
