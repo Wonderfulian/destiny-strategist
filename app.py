@@ -49,19 +49,19 @@ st.markdown("""
         font-size: 16px;
     }
     
-    /* 본문 폭 제한 (가독성 향상) */
-    .block-container {
-        max-width: 1200px !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-    }
-    
-    /* 마크다운 본문 폭 더 좁게 */
-    .stMarkdown {
-        max-width: 900px;
-        margin-left: auto;
-        margin-right: auto;
-    }
+    /* 본문 폭 제한 (15% 감소) */
+.block-container {
+    max-width: 1020px !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
+}
+
+/* 마크다운 본문 폭 더 좁게 */
+.stMarkdown {
+    max-width: 765px;
+    margin-left: auto;
+    margin-right: auto;
+}
     
     /* 메트릭 값 */
     div[data-testid="stMetricValue"] { 
@@ -124,13 +124,25 @@ st.markdown("""
         color: #ffffff !important;
     }
     
-    /* 입력 필드 */
-    input, textarea {
-        background-color: rgba(255, 255, 255, 0.1) !important;
-        color: #ffffff !important;
-        border: 1px solid rgba(255, 215, 0, 0.3) !important;
-        border-radius: 8px !important;
-    }
+ /* 입력 필드 */
+input, textarea, select {
+    background-color: rgba(30, 30, 50, 0.8) !important;
+    color: #ffffff !important;
+    border: 2px solid #ffd700 !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+}
+
+/* 날짜/시간 선택기 */
+input[type="date"], input[type="time"] {
+    background-color: rgba(30, 30, 50, 0.9) !important;
+    color: #ffffff !important;
+}
+
+/* placeholder 색상 */
+input::placeholder, textarea::placeholder {
+    color: rgba(255, 215, 0, 0.6) !important;
+}
     
     input:focus, textarea:focus {
         border-color: #ffd700 !important;
