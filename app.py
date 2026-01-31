@@ -223,16 +223,18 @@ if submitted:
                 report_box = st.empty()
                 full_response = ""
 
-              try:
-    # 복잡한 거 다 빼고, 가장 안정적인 'gemini-pro'로 고정
-    response = client.models.generate_content(
-        model="gemini-pro", 
-        contents=prompt
-    )
-    full_response = response.text
-    
-except Exception as e:
-    st.error(f"❌ 분석 실패: {e}")
+with st.spinner("운명을 분석하고 있습니다... 잠시만 기다려주세요..."):
+        try:
+            # gemini-pro 모델로 고정
+            response = client.models.generate_content(
+                model="gemini-pro", 
+                contents=prompt
+            )
+            full_response = response.text
+            
+        except Exception as e:
+            st.error(f"❌ 분석 실패: {e}")
+            full_response = "" # 에러 시 빈 문자열 처리
 
                 # 결과 출력
                 if full_response:
