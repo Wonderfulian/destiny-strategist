@@ -154,120 +154,116 @@ st.markdown("##### 사주명리 × 점성술 × 기문둔갑 × 주역 × 타로
 st.divider()
 
 if submitted:
-    # 1. API 키 확인 (비어있으면 에러)
+    # 1. API 키 확인
     if not MY_API_KEY:
         st.error("🚨 API 키가 설정되지 않았습니다.")
         st.info("💡 힌트: Streamlit Settings > Secrets 에 'GOOGLE_API_KEY'를 입력해주세요.")
     else:
-        # 클라이언트 초기화 (여기서 연결해야 안전함)
         try:
+            # 클라이언트 초기화
             client = genai.Client(api_key=MY_API_KEY)
             
-            with st.spinner("🔄 5대 알고리즘이 운명의 코드를 해독 중입니다..."):
-                
-                # 2. 알고리즘 계산
-                now = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
-                by, bm, bd = b_date.year, b_date.month, b_date.day
-                bh, bmin = b_time.hour, b_time.minute
-                
-                saju = get_real_saju(by, bm, bd, bh, bmin)
-                astro = get_real_astrology(by, bm, bd, bh, bmin)
-                qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
-                iching = get_real_iching()
-                tarot = get_real_tarot()
-                
-                # 3. 대시보드 출력 (Fact Data)
-                st.success("✅ 분석 완료! 정밀 데이터가 산출되었습니다.")
-                
-                col1, col2, col3, col4 = st.columns(4)
-                col1.metric("🀄 본원(일간)", saju['day_master'])
-                col2.metric("🧭 재물/성공 방위", qimen['desc'].split('/')[0].split(':')[1])
-                col3.metric("☯️ 주역 괘", iching.split('.')[0])
-                col4.metric("🃏 타로 카드", tarot.split('(')[0])
-                
-                with st.expander("🔍 상세 데이터(Fact Check) 보기"):
-                    st.code(f"""
-                    [분석 시점] {now.strftime('%Y-%m-%d %H:%M')}
-                    [사주팔자] {saju['text']} ({saju['desc']})
-                    [천문정보] {astro['desc']}
-                    [기문둔갑] {qimen['desc']}
-                    [주역결과] {iching}
-                    [타로결과] {tarot}
-                    """)
+            # 2. 알고리즘 계산 (이 부분은 에러가 잘 안 나므로 spinner 밖에 둡니다)
+            now = datetime.datetime.now(pytz.timezone('Asia/Seoul'))
+            by, bm, bd = b_date.year, b_date.month, b_date.day
+            bh, bmin = b_time.hour, b_time.minute
+            
+            saju = get_real_saju(by, bm, bd, bh, bmin)
+            astro = get_real_astrology(by, bm, bd, bh, bmin)
+            qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
+            iching = get_real_iching()
+            tarot = get_real_tarot()
+            
+            # 3. 대시보드 출력
+            st.success("✅ 분석 완료! 정밀 데이터가 산출되었습니다.")
+            
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("🀄 본원(일간)", saju['day_master'])
+            col2.metric("🧭 재물/성공 방위", qimen['desc'].split('/')[0].split(':')[1])
+            col3.metric("☯️ 주역 괘", iching.split('.')[0])
+            col4.metric("🃏 타로 카드", tarot.split('(')[0])
+            
+            with st.expander("🔍 상세 데이터(Fact Check) 보기"):
+                st.code(f"""
+                [분석 시점] {now.strftime('%Y-%m-%d %H:%M')}
+                [사주팔자] {saju['text']} ({saju['desc']})
+                [천문정보] {astro['desc']}
+                [기문둔갑] {qimen['desc']}
+                [주역결과] {iching}
+                [타로결과] {tarot}
+                """)
 
-                # 4. AI 리포트 생성
-                prompt = f"""
-                당신은 '수석 운명 전략가'입니다. 다음 팩트 데이터를 바탕으로 {name} 님의 운명 전략 리포트를 작성하세요.
+            # 4. AI 리포트 생성 준비
+            prompt = f"""
+            당신은 '수석 운명 전략가'입니다. 다음 팩트 데이터를 바탕으로 {name} 님의 운명 전략 리포트를 작성하세요.
+            
+            [팩트 데이터]
+            - 사주: {saju['text']} ({saju['desc']})
+            - 천문: {astro['desc']}
+            - 기문둔갑: {qimen['desc']}
+            - 주역: {iching}
+            - 타로: {tarot}
+            - 분석 시점: {now.strftime('%Y년 %m월 %d일 %H시 %M분')}
+            
+            [작성 가이드]
+            - 분량: 1500자 내외 (상세하게)
+            - 형식: 마크다운(Markdown)
+            - 어조: 전문적, 통찰력 있음, 명확함
+            
+            [목차]
+            1. 🎯 운세 대시보드 (종합 점수 및 영역별 평가)
+            2. ⚡ 기문둔갑 시공간 전략 (골든타임 & Action Plan)
+            3. 💌 주역과 타로의 심층 메시지 (현재 상황과 조언)
+            4. 📋 오늘의 구체적 행동 강령 3가지
+            """
+            
+            st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
+            report_box = st.empty()
+            full_response = ""
+
+            # 5. AI 생성 (여기가 가장 중요: 줄 맞춤 주의)
+            with st.spinner("운명을 분석하고 있습니다... 잠시만 기다려주세요..."):
+                try:
+                    # gemini-pro 모델로 고정 (안정성 최우선)
+                    response = client.models.generate_content(
+                        model="gemini-pro", 
+                        contents=prompt
+                    )
+                    full_response = response.text
+                except Exception as e:
+                    st.error(f"❌ 분석 실패: {e}")
+                    full_response = ""
+
+            # 6. 결과 출력 및 다운로드 (AI 생성 try 구문 밖에서 실행)
+            if full_response:
+                report_box.markdown(full_response)
                 
-                [팩트 데이터]
-                - 사주: {saju['text']} ({saju['desc']})
-                - 천문: {astro['desc']}
-                - 기문둔갑: {qimen['desc']}
-                - 주역: {iching}
-                - 타로: {tarot}
-                - 분석 시점: {now.strftime('%Y년 %m월 %d일 %H시 %M분')}
-                
-                [작성 가이드]
-                - 분량: 1500자 내외 (상세하게)
-                - 형식: 마크다운(Markdown)
-                - 어조: 전문적, 통찰력 있음, 명확함
-                
-                [목차]
-                1. 🎯 운세 대시보드 (종합 점수 및 영역별 평가)
-                2. ⚡ 기문둔갑 시공간 전략 (골든타임 & Action Plan)
-                3. 💌 주역과 타로의 심층 메시지 (현재 상황과 조언)
-                4. 📋 오늘의 구체적 행동 강령 3가지
+                html_content = f"""
+                <html>
+                <head><title>{name}님의 운세 리포트</title></head>
+                <body style="font-family: serif; padding: 40px; line-height: 1.8;">
+                    <h1 style="color: #4B0082;">🔮 {name}님의 운명 전략 리포트</h1>
+                    <div style="background: #f4f4f4; padding: 20px; border-radius: 10px;">
+                        <h3>📊 팩트 데이터</h3>
+                        <p>사주: {saju['text']}<br>기문둔갑: {qimen['desc']}<br>주역: {iching}<br>타로: {tarot}</p>
+                    </div>
+                    <hr>
+                    {full_response.replace('**', '<b>').replace('**', '</b>').replace('\n', '<br>')}
+                    <br><br>
+                    <div style="text-align: center; color: #888;">Powered by AI Fortune Master Engine v3.0</div>
+                </body>
+                </html>
                 """
                 
-                st.subheader(f"📜 {name} 님을 위한 심층 전략 리포트")
-                report_box = st.empty()
-                full_response = ""
-
-with st.spinner("운명을 분석하고 있습니다... 잠시만 기다려주세요..."):
-        try:
-            # gemini-pro 모델로 고정
-            response = client.models.generate_content(
-                model="gemini-pro", 
-                contents=prompt
-            )
-            full_response = response.text
-            
-        except Exception as e:
-            st.error(f"❌ 분석 실패: {e}")
-            full_response = "" # 에러 시 빈 문자열 처리
-
-                # 결과 출력
-                if full_response:
-                    report_box.markdown(full_response)
-                    
-                    # 5. HTML 다운로드 기능
-                    html_content = f"""
-                    <html>
-                    <head><title>{name}님의 운세 리포트</title></head>
-                    <body style="font-family: serif; padding: 40px; line-height: 1.8;">
-                        <h1 style="color: #4B0082;">🔮 {name}님의 운명 전략 리포트</h1>
-                        <div style="background: #f4f4f4; padding: 20px; border-radius: 10px;">
-                            <h3>📊 팩트 데이터</h3>
-                            <p>사주: {saju['text']}<br>기문둔갑: {qimen['desc']}<br>주역: {iching}<br>타로: {tarot}</p>
-                        </div>
-                        <hr>
-                        {full_response.replace('**', '<b>').replace('**', '</b>').replace('\n', '<br>')}
-                        <br><br>
-                        <div style="text-align: center; color: #888;">Powered by AI Fortune Master Engine v3.0</div>
-                    </body>
-                    </html>
-                    """
-                    
-                    st.download_button(
-                        label="💾 리포트 다운로드 (HTML)",
-                        data=html_content,
-                        file_name=f"{name}_Fortune_Report.html",
-                        mime="text/html"
-                    )
+                st.download_button(
+                    label="💾 리포트 다운로드 (HTML)",
+                    data=html_content,
+                    file_name=f"{name}_Fortune_Report.html",
+                    mime="text/html"
+                )
 
         except Exception as e:
-            st.error(f"⚠️ 연결 오류: {e}")
-            st.error("API 키가 올바르지 않거나, 구글 AI 서버 연결에 문제가 있습니다.")
+            st.error(f"⚠️ 시스템 오류: {e}")
 
 else:
     st.info("👈 왼쪽 사이드바에 정보를 입력하고 '분석 시작' 버튼을 눌러주세요.")
