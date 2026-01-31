@@ -223,23 +223,16 @@ if submitted:
                 report_box = st.empty()
                 full_response = ""
 
-                try:
-                    # 1순위 모델 시도
-                    response = client.models.generate_content(
-                        model="gemini-2.5-flash", contents=prompt
-                    )
-                    full_response = response.text
-                    
-                except Exception:
-                    # 실패 시 2순위 모델 시도
-                    try:
-                        st.toast("⚠️ 1.5 Flash 모델로 전환하여 분석합니다.", icon="🔄")
-                        response = client.models.generate_content(
-                            model="gemini-1.5-flash", contents=prompt
-                        )
-                        full_response = response.text
-                    except Exception as e:
-                        st.error(f"❌ 분석 실패: {e}")
+              try:
+    # 복잡한 거 다 빼고, 가장 안정적인 'gemini-pro'로 고정
+    response = client.models.generate_content(
+        model="gemini-pro", 
+        contents=prompt
+    )
+    full_response = response.text
+    
+except Exception as e:
+    st.error(f"❌ 분석 실패: {e}")
 
                 # 결과 출력
                 if full_response:
