@@ -7,3 +7,5 @@ streamlit-lottie
 plotly
 requests
 markdown
+Pillow
+numpy
