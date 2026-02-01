@@ -37,6 +37,8 @@ if CUSTOM_BG_URL:
     bg_size_css = "cover"
     bg_repeat_css = "no-repeat"
     bg_attachment = "fixed"
+    # [수정] 사이드바에 가려지는 것을 고려해 배경을 오른쪽으로 살짝 이동 (center -> 60%)
+    bg_position_css = "60% center" 
 else:
     # 이미지가 없을 때: 자동 생성 텍스처 (Freshman 스타일 올리브 그레이)
     @st.cache_data
@@ -65,6 +67,7 @@ else:
     bg_size_css = "auto"
     bg_repeat_css = "repeat"
     bg_attachment = "fixed"
+    bg_position_css = "center"
 
 # ==========================================
 # [디자인 시스템] CSS 적용 (Freshman Style)
@@ -80,7 +83,7 @@ st.markdown(f"""
         background-size: {bg_size_css};
         background-repeat: {bg_repeat_css};
         background-attachment: {bg_attachment};
-        background-position: center center;
+        background-position: {bg_position_css}; /* 배경 위치 조정됨 */
         color: #F0F0F0; 
         font-family: 'DM Sans', sans-serif;
     }}
@@ -90,6 +93,13 @@ st.markdown(f"""
         background-color: rgba(20, 20, 20, 0.85); 
         border-right: 1px solid #333;
         backdrop-filter: blur(10px);
+    }}
+    
+    /* [수정] 사이드바 제목 폰트 크기 축소 (1줄 맞춤) */
+    [data-testid="stSidebar"] h1 {{
+        font-size: 2.0rem !important; /* 5rem -> 2.0rem */
+        white-space: nowrap !important; /* 줄바꿈 방지 */
+        margin-top: 20px !important;
     }}
 
     /* 4. 제목 스타일 (거대한 명조체) */
@@ -340,14 +350,15 @@ with st.sidebar.form("input_form", enter_to_submit=False):
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button("ANALYZE DESTINY")
 
-# Main Header (Lottie 제거)
+# [수정] Main Header (중앙 정렬 및 시각적 보완)
 st.markdown("""
-# DESTINY<br>STRATEGIST
-### 당신을 위한 6차원 심층 분석 리포트
----
-""")
-
-# st_lottie 제거됨
+<div style="text-align: center; padding: 60px 0;">
+    <h1 style="font-size: 5rem; text-shadow: 2px 2px 10px rgba(0,0,0,0.8); margin-bottom: 20px;">Destiny Strategist</h1>
+    <h3 style="color: #ffffff; text-shadow: 0px 0px 10px rgba(0,0,0,0.9); font-weight: bold; font-size: 1.5rem; margin-top: 0; background-color: rgba(0,0,0,0.2); display: inline-block; padding: 5px 15px; border-radius: 20px;">
+        당신을 위한 6차원 심층 분석 리포트
+    </h3>
+</div>
+""", unsafe_allow_html=True)
 
 st.divider()
 
