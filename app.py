@@ -7,62 +7,33 @@ import ephem
 import pytz
 from lunar_python import Lunar, Solar
 import plotly.graph_objects as go
-from streamlit_lottie import st_lottie
 import requests
 import markdown
-from PIL import Image
-import numpy as np
-import base64
-from io import BytesIO
+import numpy as np # 텍스처 생성용 (혹시 모를 에러 방지)
 
 # ==========================================
 # [기본 설정] 페이지 디자인
 # ==========================================
 st.set_page_config(
-    page_title="운세 전략가 (Editorial Ver.)",
+    page_title="운세 전략가 (Final Ver.)",
     page_icon="🔮",
     layout="wide"
 )
 
 # ==========================================
-# [설정] 나만의 배경 이미지 넣는 곳 🖼️
+# [설정] 배경 이미지 적용 🖼️
 # ==========================================
-# 보내주신 Imgur 링크를 '직접 이미지 링크(.jpeg)'로 변환해서 넣었습니다.
-# 만약 배경이 안 나온다면, 이미지 위에서 우클릭 > '이미지 주소 복사' 해서 여기를 바꿔주세요.
-CUSTOM_BG_URL = "https://i.imgur.com/W4o6mLu.jpeg" 
-
-# ==========================================
-# [함수] 배경 처리 로직 (자동 생성 vs 사용자 이미지)
-# ==========================================
-@st.cache_data
-def create_freshman_bg():
-    """Freshman 스타일의 'Sage Grey' 노이즈 텍스처 생성"""
-    width, height = 200, 200
-    base_color = np.array([178, 178, 168], dtype=np.uint8)
-    noise = np.random.randint(-15, 15, (height, width, 3), dtype=np.int16)
-    texture = np.clip(base_color + noise, 0, 255).astype(np.uint8)
-    img = Image.fromarray(texture)
-    buffer = BytesIO()
-    img.save(buffer, format="PNG")
-    return base64.b64encode(buffer.getvalue()).decode()
+# 사용자 제공 이미지 (Imgur 직접 링크로 변환 적용)
+CUSTOM_BG_URL = "https://i.imgur.com/W4o6mLu.jpeg"
 
 # 배경 CSS 결정
-if CUSTOM_BG_URL:
-    # 사용자가 이미지를 넣었을 때: 화면에 꽉 차게(cover) 설정
-    bg_image_css = f"url('{CUSTOM_BG_URL}')"
-    bg_size_css = "cover" 
-    bg_repeat_css = "no-repeat"
-    bg_attachment = "fixed" # 스크롤 해도 배경 고정
-else:
-    # 이미지가 없을 때: 자동 생성 텍스처 (반복 패턴)
-    bg_base64 = create_freshman_bg()
-    bg_image_css = f"url('data:image/png;base64,{bg_base64}')"
-    bg_size_css = "auto"
-    bg_repeat_css = "repeat"
-    bg_attachment = "fixed"
+bg_image_css = f"url('{CUSTOM_BG_URL}')"
+bg_size_css = "cover"
+bg_repeat_css = "no-repeat"
+bg_attachment = "fixed"
 
 # ==========================================
-# [디자인 시스템] CSS 적용
+# [디자인 시스템] CSS 적용 (Freshman Style)
 # ==========================================
 st.markdown(f"""
     <style>
@@ -76,129 +47,116 @@ st.markdown(f"""
         background-repeat: {bg_repeat_css};
         background-attachment: {bg_attachment};
         background-position: center center;
-        color: #111111; 
+        color: #F0F0F0; 
         font-family: 'DM Sans', sans-serif;
     }}
 
-    /* 3. 사이드바 (투명도 조절로 배경과 어우러지게) */
+    /* 3. 사이드바 (배경과 어우러지는 어두운 톤) */
     [data-testid="stSidebar"] {{
-        background-color: rgba(163, 163, 153, 0.85); 
-        border-right: 2px solid #111111;
-        backdrop-filter: blur(5px);
+        background-color: rgba(20, 20, 20, 0.85); 
+        border-right: 1px solid #333;
+        backdrop-filter: blur(10px);
     }}
 
-    /* 4. 제목 스타일 (거대한 명조체 + 밑줄) */
+    /* 4. 제목 스타일 (거대한 명조체) */
     h1 {{
         font-family: 'Playfair Display', serif !important;
-        color: #111111 !important;
-        font-size: 4.5rem !important;
+        color: #FFFFFF !important;
+        font-size: 5rem !important;
         font-weight: 400 !important;
-        letter-spacing: -0.03em;
         text-transform: uppercase;
-        border-bottom: 3px solid #111111;
-        padding-bottom: 0.1em;
-        margin-bottom: 0.5em;
-        line-height: 1.0;
+        margin-bottom: 0px !important;
+        text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
     }}
     
     h2, h3 {{
         font-family: 'Playfair Display', serif !important;
-        color: #111111 !important;
-        border-top: 2px dashed #111111;
-        padding-top: 0.5em;
-        margin-top: 1.5em;
+        color: #E0E0E0 !important;
+        margin-top: 30px;
+        padding-top: 10px;
+        border-top: 1px solid rgba(255,255,255,0.2);
     }}
 
-    /* 5. 입력창 커스텀 (반투명 배경) */
+    /* 5. 입력창 커스텀 (어두운 반투명) */
     .stTextInput > div > div > input {{
-        background-color: rgba(255, 255, 255, 0.6) !important;
-        color: #111111 !important;
-        border: 2px solid #111111 !important;
+        background-color: rgba(0, 0, 0, 0.5) !important;
+        color: #FFFFFF !important;
+        border: 1px solid #555 !important;
         border-radius: 0px !important;
-        padding: 15px !important;
-        font-size: 18px !important;
+        padding: 12px !important;
         font-family: 'DM Sans', sans-serif !important;
-        font-weight: 700;
     }}
-    /* 입력창 라벨 */
+    .stTextInput > div > div > input:focus {{
+        border-color: #FFF !important;
+        background-color: rgba(0, 0, 0, 0.8) !important;
+    }}
     .stTextInput label {{
-        font-family: 'Playfair Display', serif !important;
-        font-size: 1.1rem !important;
-        color: #111111 !important;
-        font-weight: 700 !important;
+        color: #CCC !important;
+        font-family: 'DM Sans', sans-serif;
+        text-transform: uppercase;
+        font-size: 0.9rem;
+        letter-spacing: 2px;
     }}
 
-    /* 6. 버튼 스타일 (심플한 블랙 & 화이트) */
+    /* 6. 버튼 스타일 (심플한 화이트 라인) */
     .stButton > button, div[data-testid="stFormSubmitButton"] > button {{
         width: 100%;
-        background-color: #111111 !important;
-        color: #B2B2A8 !important;
-        font-family: 'Playfair Display', serif;
+        background-color: transparent !important;
+        color: #FFFFFF !important;
+        font-family: 'DM Sans', sans-serif;
         text-transform: uppercase;
-        font-size: 20px;
+        font-weight: 700;
         padding: 15px 0;
-        border: 2px solid #111111;
+        border: 2px solid #FFFFFF;
         border-radius: 0px;
-        transition: all 0.3s ease;
-        letter-spacing: 1px;
+        letter-spacing: 2px;
+        margin-top: 20px;
+        transition: all 0.3s;
     }}
     .stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {{
-        background-color: #333333 !important;
-        color: #FFFFFF !important;
-        transform: translateY(-2px);
-        box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+        background-color: #FFFFFF !important;
+        color: #000000 !important;
     }}
 
-    /* 7. 결과 카드 (강렬한 테두리 + 반투명) */
+    /* 7. 결과 카드 (흰색 박스 제거 -> 어두운 유리 효과) */
     .result-card {{
-        border: 3px solid #111111;
-        padding: 40px;
-        margin-bottom: 40px;
-        background-color: rgba(255, 255, 255, 0.7); /* 가독성을 위해 흰색 배경 강화 */
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 30px;
+        margin-bottom: 30px;
+        background-color: rgba(0, 0, 0, 0.6); /* 어둡게 변경 */
         backdrop-filter: blur(10px);
     }}
 
-    /* 8. 메트릭 스타일 (숫자 강조) */
+    /* 8. 메트릭 스타일 */
     div[data-testid="stMetricValue"] {{
         font-family: 'Playfair Display', serif;
-        color: #111111 !important;
-        font-size: 48px !important;
-        font-weight: 400;
-        border-bottom: 4px solid #FF3333;
-        display: inline-block;
-        line-height: 1.0;
+        color: #FFF !important;
+        font-size: 40px !important;
+        text-shadow: 0 0 10px rgba(0,0,0,0.5);
     }}
     div[data-testid="stMetricLabel"] {{
-        color: #333333 !important;
+        color: #AAA !important;
         font-family: 'DM Sans', sans-serif;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        font-size: 13px;
-        font-weight: 700;
-        margin-top: 10px;
+        font-size: 12px;
+        letter-spacing: 1px;
     }}
 
-    /* 9. 알림 박스 스타일 */
-    .stInfo, .stSuccess, .stWarning, .stError {{
-        background-color: rgba(255, 255, 255, 0.8) !important;
-        border: 2px solid #111111 !important;
-        color: #111111 !important;
-        font-family: 'DM Sans', sans-serif;
-    }}
-    
-    /* 10. 텍스트 가독성 */
+    /* 9. 텍스트 가독성 */
     .stMarkdown p, .stMarkdown li {{
-        color: #111111 !important;
-        font-size: 18px;
+        color: #EEE !important;
+        font-size: 16px;
         line-height: 1.8;
-        font-weight: 500;
     }}
     strong {{
-        color: #FF3333;
-        font-weight: 800;
-        background: rgba(255, 255, 255, 0.0);
-        text-decoration: underline;
-        text-decoration-thickness: 2px;
+        color: #FFD700; /* 골드 포인트 */
+        font-weight: 700;
+    }}
+    
+    /* 10. 알림 박스 */
+    .stInfo, .stSuccess, .stWarning, .stError {{
+        background-color: rgba(0,0,0,0.5) !important;
+        border: 1px solid #777 !important;
+        color: #DDD !important;
     }}
     </style>
 """, unsafe_allow_html=True)
@@ -308,27 +266,23 @@ def draw_five_elements_chart(day_master):
     categories = ['목', '화', '토', '금', '수']
     values = [random.randint(2, 5) for _ in range(5)]
     fig = go.Figure()
-    # 차트 색상도 Freshman 스타일 (블랙 라인 + 투명 채우기)
+    # 차트 색상: 화이트 라인 (배경과 대비)
     fig.add_trace(go.Scatterpolar(
         r=values, theta=categories, fill='toself', 
-        line_color='#111111', fillcolor='rgba(17, 17, 17, 0.1)' 
+        line_color='#FFFFFF', fillcolor='rgba(255, 255, 255, 0.15)' 
     ))
     fig.update_layout(
         polar=dict(
-            radialaxis=dict(visible=True, showticklabels=False, linecolor='#555'),
+            radialaxis=dict(visible=True, showticklabels=False, linecolor='#888'),
             bgcolor='rgba(0,0,0,0)'
         ),
         paper_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#111111', size=14),
+        font=dict(color='#FFF', size=14),
         margin=dict(l=20, r=20, t=20, b=20),
         showlegend=False,
         height=300
     )
     return fig
-
-def load_lottieurl(url):
-    try: r = requests.get(url); return r.json() if r.status_code == 200 else None
-    except: return None
 
 # ==========================================
 # [UI] 사이드바 및 메인
@@ -348,16 +302,14 @@ with st.sidebar.form("input_form", enter_to_submit=False):
     st.markdown("<br>", unsafe_allow_html=True)
     submitted = st.form_submit_button("ANALYZE DESTINY")
 
-# Main Header (Freshman Style Big Typography)
+# Main Header (Lottie 제거)
 st.markdown("""
 # DESTINY<br>STRATEGIST
 ### 당신을 위한 6차원 심층 분석 리포트
 ---
 """)
 
-# Lottie Animation
-lottie_json = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_tijmpky4.json")
-if lottie_json: st_lottie(lottie_json, height=120, key="crystal_ball")
+# st_lottie 제거됨
 
 st.divider()
 
@@ -386,10 +338,11 @@ if submitted:
         life_path = calculate_life_path_number(by, bm, bd)
         personal_day = calculate_personal_day_number(bm, bd, now.year, now.month, now.day)
         
-        # [결과 대시보드 - Freshman Grid Layout]
+        # [결과 대시보드]
         st.markdown(f"### 👋 HELLO, {name}")
         st.success("ANALYSIS COMPLETED")
         
+        # 흰색 박스 제거됨 -> 어두운 유리 카드(result-card) 사용
         st.markdown('<div class="result-card">', unsafe_allow_html=True)
         
         # 2단 레이아웃
@@ -476,11 +429,11 @@ if submitted:
                     <head>
                         <style>
                             @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap');
-                            body {{ font-family: 'DM Sans', sans-serif; padding: 40px; background-color: #B2B2A8; color: #111; }}
-                            h1 {{ font-family: 'Playfair Display', serif; border-bottom: 3px solid #111; padding-bottom: 10px; text-transform: uppercase; }}
-                            h2 {{ font-family: 'Playfair Display', serif; margin-top: 30px; border-top: 1px dashed #111; padding-top: 10px; }}
-                            .box {{ border: 2px solid #111; padding: 20px; margin-bottom: 20px; background: rgba(255,255,255,0.1); }}
-                            strong {{ color: #FF3333; }}
+                            body {{ font-family: 'DM Sans', sans-serif; padding: 40px; background-color: #787D73; color: #F0F0F0; }}
+                            h1 {{ font-family: 'Playfair Display', serif; border-bottom: 3px solid #FFF; padding-bottom: 10px; text-transform: uppercase; }}
+                            h2 {{ font-family: 'Playfair Display', serif; margin-top: 30px; border-top: 1px dashed #FFF; padding-top: 10px; }}
+                            .box {{ border: 2px solid #FFF; padding: 20px; margin-bottom: 20px; background: rgba(0,0,0,0.1); }}
+                            strong {{ color: #FFCC00; }}
                         </style>
                     </head>
                     <body>
