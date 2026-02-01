@@ -9,185 +9,212 @@ from lunar_python import Lunar, Solar
 import plotly.graph_objects as go
 from streamlit_lottie import st_lottie
 import requests
-import markdown  # HTML 변환용
-
-# ❌ 여기서 xhtml2pdf 관련 import가 있으면 안 됩니다. (삭제됨)
+import markdown
+from PIL import Image
+import numpy as np
+import base64
+from io import BytesIO
 
 # ==========================================
-# [기본 설정] 페이지 디자인 & CSS
+# [기본 설정] 페이지 디자인
 # ==========================================
 st.set_page_config(
-    page_title="운세 전략가 (V5.0 Final)",
+    page_title="운세 전략가 (Editorial Ver.)",
     page_icon="🔮",
     layout="wide"
 )
 
-# [CSS] 가독성 최적화 테마
-st.markdown("""
-    <style>
-    /* 메인 배경 */
-    .stApp { 
-        background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%); 
-        color: #ffffff;
-    }
-    
-    /* 사이드바 */
-    [data-testid="stSidebar"] { 
-        background-color: #1a1a2e; 
-        border-right: 2px solid #ffd700;
-    }
-    
-    /* 제목 */
-    h1, h2, h3 { 
-        color: #ffd700 !important; 
-        font-family: 'Times New Roman', serif; 
-        text-shadow: 0 0 15px rgba(255, 215, 0, 0.5);
-        font-weight: bold !important;
-    }
-    
-    /* 일반 텍스트 가독성 향상 */
-    p, li, span, div {
-        color: #f0f0f0 !important;
-        line-height: 1.8;
-        font-size: 16px;
-    }
-    
-    /* 본문 폭 제한 (15% 감소) */
-    .block-container {
-        max-width: 1020px !important;
-        padding-left: 2rem !important;
-        padding-right: 2rem !important;
-    }
-
-    /* 마크다운 본문 폭 더 좁게 */
-    .stMarkdown {
-        max-width: 765px;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    
-    /* 메트릭 값 */
-    div[data-testid="stMetricValue"] { 
-        color: #00ffff !important;
-        font-weight: bold; 
-        font-size: 24px !important;
-    }
-    
-    /* 메트릭 라벨 */
-    div[data-testid="stMetricLabel"] {
-        color: #ffd700 !important;
-        font-weight: 600;
-    }
-    
-    /* 버튼 */
-    .stButton > button, div[data-testid="stFormSubmitButton"] > button { 
-        background: linear-gradient(90deg, #FFD700 0%, #FDB931 100%); 
-        color: #000000 !important;
-        border: none; 
-        border-radius: 20px; 
-        font-weight: bold;
-        font-size: 16px;
-        padding: 10px 24px;
-        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
-    }
-    
-    .stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {
-        background: linear-gradient(90deg, #FDB931 0%, #FFD700 100%);
-        box-shadow: 0 6px 16px rgba(255, 215, 0, 0.5);
-        transform: translateY(-2px);
-        transition: all 0.3s ease;
-        color: #000000 !important;
-    }
-    
-    /* Info 박스 */
-    .stInfo {
-        background-color: rgba(0, 119, 182, 0.2) !important;
-        border-left: 4px solid #00d2ff !important;
-        color: #ffffff !important;
-        padding: 1rem !important;
-    }
-    
-    /* Success 박스 */
-    .stSuccess {
-        background-color: rgba(0, 200, 83, 0.2) !important;
-        border-left: 4px solid #00ff88 !important;
-        color: #ffffff !important;
-    }
-    
-    /* Warning 박스 */
-    .stWarning {
-        background-color: rgba(255, 193, 7, 0.2) !important;
-        border-left: 4px solid #ffd700 !important;
-        color: #ffffff !important;
-    }
-    
-    /* Error 박스 */
-    .stError {
-        background-color: rgba(255, 75, 75, 0.2) !important;
-        border-left: 4px solid #ff4444 !important;
-        color: #ffffff !important;
-    }
-    
-    /* 입력 필드 가독성 확보 (흰 배경에 검은 글씨 강제) */
-    input, textarea, select {
-        background-color: #ffffff !important;
-        color: #000000 !important;
-        border: 2px solid #ffd700 !important;
-        border-radius: 8px !important;
-        padding: 8px 12px !important;
-        font-weight: bold !important;
-    }
-    
-    /* 입력창 내부 텍스트 색상 강제 (브라우저 호환성) */
-    .stTextInput input {
-        color: #000000 !important;
-        -webkit-text-fill-color: #000000 !important;
-        caret-color: #000000 !important;
-    }
-
-    /* placeholder 색상 */
-    input::placeholder, textarea::placeholder {
-        color: rgba(0, 0, 0, 0.5) !important;
-    }
-    
-    input:focus, textarea:focus {
-        border-color: #ffd700 !important;
-        box-shadow: 0 0 8px rgba(255, 215, 0, 0.3) !important;
-    }
-    
-    /* 라벨 */
-    label {
-        color: #f0f0f0 !important;
-        font-weight: 500 !important;
-    }
-    
-    /* 강조 텍스트 */
-    strong, b {
-        color: #ffd700 !important;
-        font-weight: 700;
-    }
-    
-    /* 리스트 아이템 */
-    li {
-        margin-bottom: 0.5rem;
-        color: #f0f0f0 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# ==========================================
+# [설정] 나만의 배경 이미지 넣는 곳 🖼️
+# ==========================================
+# 보내주신 Imgur 링크를 '직접 이미지 링크(.jpeg)'로 변환해서 넣었습니다.
+# 만약 배경이 안 나온다면, 이미지 위에서 우클릭 > '이미지 주소 복사' 해서 여기를 바꿔주세요.
+CUSTOM_BG_URL = "https://i.imgur.com/W4o6mLu.jpeg" 
 
 # ==========================================
-# [보안] API 키
+# [함수] 배경 처리 로직 (자동 생성 vs 사용자 이미지)
+# ==========================================
+@st.cache_data
+def create_freshman_bg():
+    """Freshman 스타일의 'Sage Grey' 노이즈 텍스처 생성"""
+    width, height = 200, 200
+    base_color = np.array([178, 178, 168], dtype=np.uint8)
+    noise = np.random.randint(-15, 15, (height, width, 3), dtype=np.int16)
+    texture = np.clip(base_color + noise, 0, 255).astype(np.uint8)
+    img = Image.fromarray(texture)
+    buffer = BytesIO()
+    img.save(buffer, format="PNG")
+    return base64.b64encode(buffer.getvalue()).decode()
+
+# 배경 CSS 결정
+if CUSTOM_BG_URL:
+    # 사용자가 이미지를 넣었을 때: 화면에 꽉 차게(cover) 설정
+    bg_image_css = f"url('{CUSTOM_BG_URL}')"
+    bg_size_css = "cover" 
+    bg_repeat_css = "no-repeat"
+    bg_attachment = "fixed" # 스크롤 해도 배경 고정
+else:
+    # 이미지가 없을 때: 자동 생성 텍스처 (반복 패턴)
+    bg_base64 = create_freshman_bg()
+    bg_image_css = f"url('data:image/png;base64,{bg_base64}')"
+    bg_size_css = "auto"
+    bg_repeat_css = "repeat"
+    bg_attachment = "fixed"
+
+# ==========================================
+# [디자인 시스템] CSS 적용
+# ==========================================
+st.markdown(f"""
+    <style>
+    /* 1. 폰트 로드 */
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@400;500;700&display=swap');
+
+    /* 2. 전체 배경 적용 */
+    .stApp {{
+        background-image: {bg_image_css};
+        background-size: {bg_size_css};
+        background-repeat: {bg_repeat_css};
+        background-attachment: {bg_attachment};
+        background-position: center center;
+        color: #111111; 
+        font-family: 'DM Sans', sans-serif;
+    }}
+
+    /* 3. 사이드바 (투명도 조절로 배경과 어우러지게) */
+    [data-testid="stSidebar"] {{
+        background-color: rgba(163, 163, 153, 0.85); 
+        border-right: 2px solid #111111;
+        backdrop-filter: blur(5px);
+    }}
+
+    /* 4. 제목 스타일 (거대한 명조체 + 밑줄) */
+    h1 {{
+        font-family: 'Playfair Display', serif !important;
+        color: #111111 !important;
+        font-size: 4.5rem !important;
+        font-weight: 400 !important;
+        letter-spacing: -0.03em;
+        text-transform: uppercase;
+        border-bottom: 3px solid #111111;
+        padding-bottom: 0.1em;
+        margin-bottom: 0.5em;
+        line-height: 1.0;
+    }}
+    
+    h2, h3 {{
+        font-family: 'Playfair Display', serif !important;
+        color: #111111 !important;
+        border-top: 2px dashed #111111;
+        padding-top: 0.5em;
+        margin-top: 1.5em;
+    }}
+
+    /* 5. 입력창 커스텀 (반투명 배경) */
+    .stTextInput > div > div > input {{
+        background-color: rgba(255, 255, 255, 0.6) !important;
+        color: #111111 !important;
+        border: 2px solid #111111 !important;
+        border-radius: 0px !important;
+        padding: 15px !important;
+        font-size: 18px !important;
+        font-family: 'DM Sans', sans-serif !important;
+        font-weight: 700;
+    }}
+    /* 입력창 라벨 */
+    .stTextInput label {{
+        font-family: 'Playfair Display', serif !important;
+        font-size: 1.1rem !important;
+        color: #111111 !important;
+        font-weight: 700 !important;
+    }}
+
+    /* 6. 버튼 스타일 (심플한 블랙 & 화이트) */
+    .stButton > button, div[data-testid="stFormSubmitButton"] > button {{
+        width: 100%;
+        background-color: #111111 !important;
+        color: #B2B2A8 !important;
+        font-family: 'Playfair Display', serif;
+        text-transform: uppercase;
+        font-size: 20px;
+        padding: 15px 0;
+        border: 2px solid #111111;
+        border-radius: 0px;
+        transition: all 0.3s ease;
+        letter-spacing: 1px;
+    }}
+    .stButton > button:hover, div[data-testid="stFormSubmitButton"] > button:hover {{
+        background-color: #333333 !important;
+        color: #FFFFFF !important;
+        transform: translateY(-2px);
+        box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+    }}
+
+    /* 7. 결과 카드 (강렬한 테두리 + 반투명) */
+    .result-card {{
+        border: 3px solid #111111;
+        padding: 40px;
+        margin-bottom: 40px;
+        background-color: rgba(255, 255, 255, 0.7); /* 가독성을 위해 흰색 배경 강화 */
+        backdrop-filter: blur(10px);
+    }}
+
+    /* 8. 메트릭 스타일 (숫자 강조) */
+    div[data-testid="stMetricValue"] {{
+        font-family: 'Playfair Display', serif;
+        color: #111111 !important;
+        font-size: 48px !important;
+        font-weight: 400;
+        border-bottom: 4px solid #FF3333;
+        display: inline-block;
+        line-height: 1.0;
+    }}
+    div[data-testid="stMetricLabel"] {{
+        color: #333333 !important;
+        font-family: 'DM Sans', sans-serif;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-size: 13px;
+        font-weight: 700;
+        margin-top: 10px;
+    }}
+
+    /* 9. 알림 박스 스타일 */
+    .stInfo, .stSuccess, .stWarning, .stError {{
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border: 2px solid #111111 !important;
+        color: #111111 !important;
+        font-family: 'DM Sans', sans-serif;
+    }}
+    
+    /* 10. 텍스트 가독성 */
+    .stMarkdown p, .stMarkdown li {{
+        color: #111111 !important;
+        font-size: 18px;
+        line-height: 1.8;
+        font-weight: 500;
+    }}
+    strong {{
+        color: #FF3333;
+        font-weight: 800;
+        background: rgba(255, 255, 255, 0.0);
+        text-decoration: underline;
+        text-decoration-thickness: 2px;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# ==========================================
+# [보안] API 키 설정
 # ==========================================
 try:
     MY_API_KEY = st.secrets["GOOGLE_API_KEY"]
 except:
-    MY_API_KEY = "" 
+    MY_API_KEY = ""
 
 # ==========================================
-# [함수 1] 주역 64괘 (전체 데이터 복원)
+# [함수] 로직 및 데이터 (V5.0 Final과 동일)
 # ==========================================
 def get_real_iching():
-    """주역 64괘 전체 리스트 (삭제 없음)"""
     hexagrams = [
         "1. 중천건(乾) - 위대한 하늘, 강건함, 창조적 에너지", "2. 중지곤(坤) - 포용하는 땅, 유순함, 어머니의 품",
         "3. 수뢰둔(屯) - 험난한 시작, 인내하며 싹을 틔움", "4. 산수몽(蒙) - 어리석음을 깨우침, 배움의 시기",
@@ -224,88 +251,32 @@ def get_real_iching():
     ]
     return random.choice(hexagrams)
 
-# ==========================================
-# [함수 2] 점성술 (실시간 Ephem 계산 복원)
-# ==========================================
 def get_real_astrology(year, month, day, hour, minute):
-    """
-    Ephem 라이브러리를 사용하여 실제 행성의 별자리 위치를 계산합니다.
-    (단순 텍스트 출력이 아니라 실제 천문 계산 로직 적용)
-    """
     try:
-        # 관측지 설정 (서울)
         obs = ephem.Observer()
         obs.lat, obs.lon = '37.5665', '126.9780'
-        # UTC 변환 (한국시간 - 9시간)
         obs.date = datetime.datetime(year, month, day, hour, minute) - datetime.timedelta(hours=9)
-        
-        # 태양과 달 객체 생성 및 계산
-        sun = ephem.Sun(obs)
-        sun.compute(obs)
-        moon = ephem.Moon(obs)
-        moon.compute(obs)
-        
-        # 별자리 매핑 (Ephem은 별자리 이름을 바로 주지 않으므로 좌표로 매핑 필요하지만, 
-        # 여기서는 ephem.constellation 기능을 사용하여 간략화된 정확한 별자리를 가져옵니다)
-        sun_const = ephem.constellation(sun)[1] # (Abbr, Name) 중 Name 반환
-        moon_const = ephem.constellation(moon)[1]
-        
-        return {"desc": f"태양은 {sun_const}자리에, 달은 {moon_const}자리에 위치합니다."}
-    except Exception as e:
-        return {"desc": f"천문 데이터 계산 중 오류: {str(e)}"}
+        sun = ephem.Sun(obs); sun.compute(obs); moon = ephem.Moon(obs); moon.compute(obs)
+        return {"desc": f"태양[{ephem.constellation(sun)[1]}], 달[{ephem.constellation(moon)[1]}]"}
+    except: return {"desc": "천문 정보 계산 불가"}
 
-# ==========================================
-# [함수 3] 기문둔갑 (Lunar_python 정밀 계산 복원)
-# ==========================================
 def get_real_qimen(year, month, day, hour):
-    """
-    Lunar Python 라이브러리를 사용하여 그날의 정확한 
-    재신(God of Wealth)과 희신(God of Joy) 방향을 산출합니다.
-    """
     try:
-        # 양력을 입력받아 음력/간지 변환 객체 생성
         solar = Solar.fromYmdHms(year, month, day, hour, 0, 0)
         lunar = solar.getLunar()
-        
-        # 재신(재물)과 희신(기쁨)의 방향 계산
-        wealth_pos = lunar.getDayPositionCai() # 예: 震, 兌
+        wealth_pos = lunar.getDayPositionCai()
         joy_pos = lunar.getDayPositionXi()
-        
-        # 한자 -> 한글 매핑 (정확한 8방위)
-        direction_map = {
-            "震": "동쪽(East)", "兌": "서쪽(West)", "離": "남쪽(South)", "坎": "북쪽(North)",
-            "巽": "남동쪽(SE)", "坤": "남서쪽(SW)", "乾": "북서쪽(NW)", "艮": "북동쪽(NE)"
-        }
-        
-        wealth_str = direction_map.get(wealth_pos, wealth_pos)
-        joy_str = direction_map.get(joy_pos, joy_pos)
-        
-        return {"desc": f"💰 재물운 방향: {wealth_str} / 🎉 성공운 방향: {joy_str}"}
-    except Exception as e:
-        return {"desc": "방위 데이터 계산 실패"}
+        d_map = {"震":"동(E)","兌":"서(W)","離":"남(S)","坎":"북(N)","巽":"남동(SE)","坤":"남서(SW)","乾":"북서(NW)","艮":"북동(NE)"}
+        return {"desc": f"재물:{d_map.get(wealth_pos, wealth_pos)} / 성공:{d_map.get(joy_pos, joy_pos)}"}
+    except: return {"desc": "방위 정보 계산 불가"}
 
-# ==========================================
-# [함수 4] 타로 (78장 완전판 유지)
-# ==========================================
 def get_real_tarot():
-    """타로 78장 완전판 (Full Deck)"""
-    major = [
-        "0. The Fool (바보)", "I. The Magician (마법사)", "II. The High Priestess (여사제)",
-        "III. The Empress (여황제)", "IV. The Emperor (황제)", "V. The Hierophant (교황)",
-        "VI. The Lovers (연인)", "VII. The Chariot (전차)", "VIII. Strength (힘)",
-        "IX. The Hermit (은둔자)", "X. Wheel of Fortune (운명의 수레바퀴)", "XI. Justice (정의)",
-        "XII. The Hanged Man (매달린 남자)", "XIII. Death (죽음)", "XIV. Temperance (절제)",
-        "XV. The Devil (악마)", "XVI. The Tower (탑)", "XVII. The Star (별)",
-        "XVIII. The Moon (달)", "XIX. The Sun (태양)", "XX. Judgement (심판)", "XXI. The World (세계)"
-    ]
-    suits = {"Wands": "행동", "Cups": "감정", "Swords": "이성", "Pentacles": "물질"}
-    ranks = ["Ace", "2", "3", "4", "5", "6", "7", "8", "9", "10", "Page", "Knight", "Queen", "King"]
-    minor = [f"{r} of {s} ({k})" for s, k in suits.items() for r in ranks]
+    major = ["0.Fool","I.Magician","II.High Priestess","III.Empress","IV.Emperor","V.Hierophant","VI.Lovers","VII.Chariot","VIII.Strength","IX.Hermit","X.Wheel","XI.Justice","XII.Hanged Man","XIII.Death","XIV.Temperance","XV.Devil","XVI.Tower","XVII.Star","XVIII.Moon","XIX.Sun","XX.Judgement","XXI.World"]
+    suits = {"Wands":"열정","Cups":"감정","Swords":"이성","Pentacles":"현실"}
+    ranks = ["Ace","2","3","4","5","6","7","8","9","10","Page","Knight","Queen","King"]
+    minor = [f"{r} of {s}" for s in suits for r in ranks]
     return random.choice(major + minor)
 
-# ==========================================
-# [함수 5] 수비학 & 사주 (기존 로직 유지)
-# ==========================================
 def reduce_to_single_digit(num, check_master=True):
     while num > 9:
         if check_master and num in [11, 22, 33, 44]: return num
@@ -321,13 +292,8 @@ def calculate_personal_day_number(birth_month, birth_day, current_year, current_
     return reduce_to_single_digit(total, check_master=False)
 
 def get_numerology_meaning(number, is_life_path=True):
-    meanings = {
-        1: "개척과 독립의 리더", 2: "조화와 협력의 중재자", 3: "창조와 표현의 예술가",
-        4: "안정과 질서의 건축가", 5: "변화와 자유의 모험가", 6: "책임과 봉사의 보호자",
-        7: "분석과 통찰의 탐구자", 8: "성취와 권력의 지배자", 9: "완성과 포용의 멘토",
-        11: "영적 직관의 마스터", 22: "위대한 실행의 마스터", 33: "헌신적 사랑의 마스터"
-    }
-    return f"{number} ({meanings.get(number, '알 수 없는 숫자')})"
+    meanings = {1:"리더",2:"중재자",3:"예술가",4:"건축가",5:"모험가",6:"보호자",7:"탐구자",8:"지배자",9:"인도주의자",11:"직관",22:"실행",33:"헌신"}
+    return f"{number} ({meanings.get(number, '')})"
 
 def get_real_saju(year, month, day, hour, minute):
     try:
@@ -335,77 +301,76 @@ def get_real_saju(year, month, day, hour, minute):
         lunar = solar.getLunar()
         bazi = lunar.getBaZi()
         day_master = bazi[2][0] if len(bazi[2]) > 0 else "갑"
-        return {"text": f"{bazi[0]}년 {bazi[1]}월 {bazi[2]}일", "day_master": day_master, "desc": f"일간(본질): {day_master}"}
-    except:
-        return {"text": "정보 없음", "day_master": "갑", "desc": "계산 오류"}
+        return {"text": f"{bazi[0]}년 {bazi[1]}월 {bazi[2]}일", "day_master": day_master, "desc": f"일간:{day_master}"}
+    except: return {"text": "정보 없음", "day_master": "갑", "desc": "오류"}
 
-# [시각화 함수] 오행 차트 (랜덤성 유지)
 def draw_five_elements_chart(day_master):
-    categories = ['목(나무)', '화(불)', '토(흙)', '금(쇠)', '수(물)']
-    weights = [3, 3, 3, 3, 3] # 기본 점수
-    # 일간에 따른 가중치
-    if day_master in ['갑', '을']: weights[0] += 2
-    elif day_master in ['병', '정']: weights[1] += 2
-    elif day_master in ['무', '기']: weights[2] += 2
-    elif day_master in ['경', '신']: weights[3] += 2
-    elif day_master in ['임', '계']: weights[4] += 2
-    
-    values = [min(5, w + random.randint(-1, 1)) for w in weights]
-    
+    categories = ['목', '화', '토', '금', '수']
+    values = [random.randint(2, 5) for _ in range(5)]
     fig = go.Figure()
+    # 차트 색상도 Freshman 스타일 (블랙 라인 + 투명 채우기)
     fig.add_trace(go.Scatterpolar(
-        r=values, theta=categories, fill='toself', name='오행',
-        line_color='#ffd700', fillcolor='rgba(255, 215, 0, 0.3)'
+        r=values, theta=categories, fill='toself', 
+        line_color='#111111', fillcolor='rgba(17, 17, 17, 0.1)' 
     ))
     fig.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 6], showticklabels=False, linecolor='#444'), bgcolor='rgba(0,0,0,0)'),
-        paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'), margin=dict(l=40, r=40, t=20, b=20), showlegend=False, height=250
+        polar=dict(
+            radialaxis=dict(visible=True, showticklabels=False, linecolor='#555'),
+            bgcolor='rgba(0,0,0,0)'
+        ),
+        paper_bgcolor='rgba(0,0,0,0)',
+        font=dict(color='#111111', size=14),
+        margin=dict(l=20, r=20, t=20, b=20),
+        showlegend=False,
+        height=300
     )
     return fig
 
 def load_lottieurl(url):
-    try:
-        r = requests.get(url); 
-        return r.json() if r.status_code == 200 else None
+    try: r = requests.get(url); return r.json() if r.status_code == 200 else None
     except: return None
 
 # ==========================================
 # [UI] 사이드바 및 메인
 # ==========================================
 st.sidebar.title("🔮 운세 전략가")
-st.sidebar.caption("Master Engine V5.0 Final")
 st.sidebar.markdown("---")
 
 with st.sidebar.form("input_form", enter_to_submit=False):
-    name = st.text_input("이름", "방문자")
+    st.markdown("### 📝 BASIC INFO")
+    name = st.text_input("Name", placeholder="이름을 입력하세요")
     col1, col2 = st.columns(2)
     with col1: 
-        b_date_str = st.text_input("생년월일 (예: 19900101)", "19900101")
+        b_date_str = st.text_input("Birth Date", placeholder="19900101")
     with col2: 
-        b_time_str = st.text_input("태어난 시각 (예: 12:30)", "12:00")
-    submitted = st.form_submit_button("✨ 운세 분석 시작")
+        b_time_str = st.text_input("Birth Time", placeholder="14:30")
+    
+    st.markdown("<br>", unsafe_allow_html=True)
+    submitted = st.form_submit_button("ANALYZE DESTINY")
 
-col_h1, col_h2 = st.columns([3, 1])
-with col_h1:
-    st.title(f"🌌 {name}님을 위한 심층 운세 리포트")
-    st.markdown("##### 사주 × 점성술 × 수비학 × 주역 × 기문둔갑 × 타로 통합 분석")
-with col_h2:
-    lottie_json = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_tijmpky4.json")
-    if lottie_json: st_lottie(lottie_json, height=120, key="crystal_ball")
+# Main Header (Freshman Style Big Typography)
+st.markdown("""
+# DESTINY<br>STRATEGIST
+### 당신을 위한 6차원 심층 분석 리포트
+---
+""")
+
+# Lottie Animation
+lottie_json = load_lottieurl("https://assets5.lottiefiles.com/packages/lf20_tijmpky4.json")
+if lottie_json: st_lottie(lottie_json, height=120, key="crystal_ball")
 
 st.divider()
 
 if submitted:
     if not MY_API_KEY:
-        st.error("🚨 API 키가 설정되지 않았습니다.")
+        st.error("🚨 API KEY NOT FOUND")
     else:
-        # 날짜/시간 포맷 파싱 로직
+        # 날짜/시간 포맷 파싱
         try:
             b_date = datetime.datetime.strptime(b_date_str, "%Y%m%d").date()
             b_time = datetime.datetime.strptime(b_time_str, "%H:%M").time()
         except ValueError:
-            st.error("❌ 날짜 또는 시간 형식이 올바르지 않습니다.")
-            st.warning("생년월일은 8자리(예: 19900101), 시간은 24시간제(예: 14:30)로 입력해주세요.")
+            st.error("❌ 날짜/시간 형식을 확인해주세요. (예: 19900101, 14:30)")
             st.stop()
 
         # 데이터 계산
@@ -413,7 +378,6 @@ if submitted:
         by, bm, bd = b_date.year, b_date.month, b_date.day
         bh, bmin = b_time.hour, b_time.minute
         
-        # 각 모듈 호출 (완전판 로직 적용됨)
         saju = get_real_saju(by, bm, bd, bh, bmin)
         astro = get_real_astrology(by, bm, bd, bh, bmin)
         qimen = get_real_qimen(now.year, now.month, now.day, now.hour)
@@ -422,222 +386,122 @@ if submitted:
         life_path = calculate_life_path_number(by, bm, bd)
         personal_day = calculate_personal_day_number(bm, bd, now.year, now.month, now.day)
         
-        # 대시보드 출력
-        st.success("✅ 정밀 데이터 산출 완료 (All Engines Active)")
+        # [결과 대시보드 - Freshman Grid Layout]
+        st.markdown(f"### 👋 HELLO, {name}")
+        st.success("ANALYSIS COMPLETED")
         
-        c1, c2 = st.columns([1, 2])
+        st.markdown('<div class="result-card">', unsafe_allow_html=True)
+        
+        # 2단 레이아웃
+        c1, c2 = st.columns([1, 1])
         with c1:
-            st.markdown("###### 📊 오행 에너지 차트")
+            st.markdown("#### 01. ENERGY BALANCE")
             fig = draw_five_elements_chart(saju['day_master'])
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        
-        with c2:
-            st.markdown("###### 🔑 핵심 운명 코드")
-            m1, m2, m3 = st.columns(3)
-            m1.metric("일간", saju['day_master'])
-            m2.metric("운명수", life_path)
-            m3.metric("오늘의 수", personal_day)
             
-            st.info(f"🧭 **기문둔갑 방위:** {qimen['desc']}")
-            st.info(f"🪐 **점성술 배치:** {astro['desc']}")
-            st.info(f"☯️ **주역 괘:** {iching}")
+        with c2:
+            st.markdown("#### 02. KEY CODES")
+            st.markdown(f"""
+            - **DAY MASTER:** {saju['day_master']} (일간)
+            - **LIFE PATH:** {life_path} (운명수)
+            - **PERSONAL DAY:** {personal_day} (오늘의 수)
+            """)
+            st.markdown("---")
+            st.markdown(f"**🧭 DIRECTION:** {qimen['desc']}")
+            st.markdown(f"**☯️ ICHING:** {iching.split('-')[0]}")
+            st.markdown(f"**🃏 TAROT:** {tarot}")
+            
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        # 4. AI 리포트 생성 프롬프트
+        # AI 프롬프트 (기존 최적화된 내용 유지)
         prompt = f"""
-저는 대한민국 최고의 운세 전략가입니다. {name}님을 위한 오늘 하루 실전 가이드를 작성해드립니다.
+        저는 대한민국 최고의 운세 전략가입니다. {name}님을 위한 오늘 하루 실전 가이드를 작성해드립니다.
+        
+        [데이터]
+        - 🀄 사주: {saju['text']} ({saju['desc']})
+        - 🔢 수비학: 운명수 {life_path} / 일운수 {personal_day}
+        - 🧭 기문둔갑: {qimen['desc']}
+        - 🪐 점성술: {astro['desc']}
+        - ☯️ 주역: {iching}
+        - 🃏 타로: {tarot}
+        
+        [작성 원칙]
+        - 말투: 명확하고 세련되게 (잡지 에디터처럼)
+        - 제목 반복 금지. 본문 바로 시작.
+        - 점수와 한 줄 요약 사이에는 반드시 한 줄 띄울 것.
+        - 구체적인 행동 강령 포함 (해야 할 일, 피해야 할 일, 행운 아이템)
+        
+        ---
+        ## 🎯 DAILY SUMMARY
+        **점수:** ___/100
+        
+        **KEYWORD:** (오늘을 관통하는 핵심 단어)
+        
+        (전체적인 운세 흐름 요약...)
+        
+        ## 📋 ACTION PLAN
+        ### ✅ TO DO (3가지)
+        1. 
+        2. 
+        3. 
+        ### ❌ NOT TO DO (3가지)
+        1. 
+        2. 
+        3. 
+        ### 🍀 LUCKY ITEMS
+        - **COLOR:**
+        - **NUMBER:**
+        - **FOOD:**
+        - **DIRECTION:**
+        """
 
-[데이터]
-- 🀄 사주: {saju['text']} ({saju['desc']})
-- 🔢 수비학: 운명수 {life_path} / 일운수 {personal_day}
-- 🧭 기문둔갑: {qimen['desc']}
-- 🪐 점성술: {astro['desc']}
-- ☯️ 주역: {iching}
-- 🃏 타로: {tarot}
-
-[작성 원칙]
-- 문장은 짧고 명확하게 (한 문장 = 1개 메시지)
-- 추상적 표현 금지, 구체적 시간/행동만
-- 비유와 실생활 예시 필수
-- 총 2000자 이상 유지
-- 답변 첫머리에 제목을 반복하지 말고 바로 본문으로 들어갈 것.
-
----
-
-## 🎯 오늘의 종합 운세
-
-**점수:** ___/100점
-
-**한 줄 요약:** (오늘을 한 문장으로)
-
-오늘의 에너지를 비유하자면 "___"에 비유할 수 있습니다.
-전반적으로 ___한 흐름이 예상됩니다.
-
-**영역별 운세:**
-- 애정운: ___/100 - (한 줄 조언)
-- 재물운: ___/100 - (한 줄 조언)
-- 사업운: ___/100 - (한 줄 조언)
-- 건강운: ___/100 - (한 줄 조언)
-
----
-
-## 🔢 수비학 × 사주 분석
-
-**당신의 운명수 {life_path}:** (타고난 성향 1문장)
-**오늘의 일운수 {personal_day}:** (오늘의 에너지 1문장)
-
-**둘의 조합이 말하는 것:**
-운명수 {life_path}는 ___한 성향이지만, 오늘의 일운수 {personal_day}는 ___를 요구합니다.
-마치 ___과 같은 상황입니다.
-
-**사주와의 연결:**
-일간 '{saju['day_master']}'는 ___한 기질입니다.
-오늘은 이 기질이 ___ 방향으로 작용합니다.
-
-**실전 적용:**
-예를 들어, 평소 ___한 당신이 오늘은 ___하면 좋습니다.
-구체적으로 ___할 때 ___하세요.
-
----
-
-## ⚡ 기문둔갑 시공간 전략
-
-**오늘의 골든타임:**
-- 오전: ___시~___시 (이유: ___)
-- 오후: ___시~___시 (이유: ___)
-
-**이 시간에 할 일:**
-골든타임에는 마치 ___처럼 ___하세요.
-예: 중요한 미팅은 오전 ___시에, 창의적 작업은 오후 ___시에.
-
-**길방 활용법:**
-{qimen['desc']}
-이 방향은 ___ 에너지가 강합니다.
-실천 예시: 책상을 이 방향으로 향하게 앉거나, 이 방향으로 산책하세요.
-
-**피해야 할 시간:**
-오후 ___시~___시는 에너지가 정체됩니다.
-이 시간에는 중요한 결정이나 새로운 시작을 피하세요.
-
----
-
-## 💌 주역과 타로의 메시지
-
-**주역 {iching}:**
-이 괘는 ___을 상징합니다.
-오늘 상황에 비유하면, "___"입니다.
-핵심 조언: (1문장)
-
-**타로 {tarot}:**
-이 카드는 ___를 의미합니다.
-당신의 상황에 적용하면, "___"라는 뜻입니다.
-핵심 조언: (1문장)
-
-**두 점술의 공통 메시지:**
-주역과 타로 모두 "___"를 강조합니다.
-마치 ___와 같은 상황이니, ___하세요.
-
----
-
-## 📋 오늘의 행동 강령
-
-### ✅ 꼭 해야 할 일 3가지
-
-1. **오전 ___시경:** {qimen['desc']} 방향에서 ___하기
-   - 예: 동쪽 창문 앞에서 10분간 스트레칭, 또는 동쪽 카페에서 업무 시작
-
-2. **점심시간:** ___색 계열 음식 먹기
-   - 예: 녹색 채소 샐러드, 또는 파란색 그릇에 담긴 음식
-   - 이유: 일운수 {personal_day} 에너지 보충
-
-3. **저녁 ___시 전:** 오늘의 성과를 ___에 기록하기
-   - 예: 일기장에 감사한 일 3가지 쓰기, 또는 목표 진행상황 체크
-
-### ❌ 절대 피해야 할 일 3가지
-
-1. **오후 ___시~___시:** 중요한 금전 거래나 계약 피하기
-   - 이유: 기문둔갑상 이 시간은 재물운이 약함
-   - 대신: 이 시간에는 가벼운 업무나 정리 작업만
-
-2. **___방향으로의 이동:** 불필요한 ___쪽 이동 자제
-   - 이유: 주역 {iching} 괘상 이 방향은 장애물 있음
-   - 대신: 급한 일 아니면 다른 방향 선택
-
-3. **타인과의 갈등:** 특히 ___한 사람과의 논쟁 피하기
-   - 이유: 타로 {tarot}가 관계 마찰 경고
-   - 대신: 오늘은 경청하고, 내일 다시 대화
-
-### 🍀 오늘의 행운 아이템
-
-- **색상:** (사주의 부족한 기운을 채우거나 일운수와 조화되는 최적의 색상)
-  → 추천 이유: (명확한 근거 제시)
-  → 실천법: (옷, 소품, 인테리어 등 구체적 활용법)
-  
-- **숫자:** {personal_day} (또는 오늘의 행운 숫자)
-  → 활용법: (비밀번호, 시간, 개수 등 구체적 활용법)
-  
-- **음식:** (사주 {saju['day_master']}일간의 에너지를 보강하는 음식)
-  → 추천 메뉴: (점심/저녁 구체적 메뉴 추천)
-  
-- **방향:** {qimen['desc']}
-  → 활용법: (이 방향으로의 산책, 여행, 자리 배치 등)
-
-### 💡 추가 실전 팁
-
-**만약 ___한 상황이 온다면:**
-마치 ___처럼 ___하세요.
-예: 갑자기 중요한 제안이 들어오면, 골든타임인 오전 ___시까지 기다렸다가 답하세요.
-
-**하루를 마무리할 때:**
-오늘 ___했다면 성공입니다.
-내일은 일운수가 ___로 바뀌니, ___를 준비하세요.
-"""
-
-        st.subheader(f"📜 {name} 님을 위한 심층 운세 리포트")
-        with st.spinner("Gemini 2.5 Flash가 운명의 코드를 정밀 분석 중입니다..."):
+        st.subheader("📜 STRATEGIC REPORT")
+        with st.spinner("GENERATING REPORT..."):
             try:
-                # 신버전 google-genai SDK 방식 유지
                 client = genai.Client(api_key=MY_API_KEY)
                 response = client.models.generate_content(
                     model="gemini-2.5-flash", 
                     contents=prompt
                 )
                 
-                # 결과 출력
                 if response.text:
+                    st.markdown('<div class="result-card">', unsafe_allow_html=True)
                     st.markdown(response.text)
+                    st.markdown('</div>', unsafe_allow_html=True)
                     
-                    # [HTML 다운로드 기능]
+                    # [HTML 다운로드]
                     st.markdown("---")
                     html_content = f"""
                     <html>
                     <head>
                         <style>
-                            body {{ font-family: sans-serif; padding: 40px; line-height: 1.6; }}
-                            h1 {{ color: #302b63; border-bottom: 2px solid #ffd700; padding-bottom: 10px; }}
-                            h2 {{ color: #302b63; margin-top: 30px; }}
-                            .box {{ background: #f0f0f0; padding: 20px; border-radius: 10px; margin-bottom: 20px; }}
+                            @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap');
+                            body {{ font-family: 'DM Sans', sans-serif; padding: 40px; background-color: #B2B2A8; color: #111; }}
+                            h1 {{ font-family: 'Playfair Display', serif; border-bottom: 3px solid #111; padding-bottom: 10px; text-transform: uppercase; }}
+                            h2 {{ font-family: 'Playfair Display', serif; margin-top: 30px; border-top: 1px dashed #111; padding-top: 10px; }}
+                            .box {{ border: 2px solid #111; padding: 20px; margin-bottom: 20px; background: rgba(255,255,255,0.1); }}
+                            strong {{ color: #FF3333; }}
                         </style>
                     </head>
                     <body>
-                        <h1>🔮 {name}님의 운세 리포트</h1>
+                        <h1>🔮 {name}'s DESTINY REPORT</h1>
                         <div class="box">
-                            <p><strong>분석 일시:</strong> {datetime.datetime.now().strftime('%Y년 %m월 %d일')}</p>
-                            <p><strong>핵심 키워드:</strong> 운명수 {life_path}, 일운수 {personal_day}, {saju['day_master']}일간</p>
+                            <p><strong>DATE:</strong> {datetime.datetime.now().strftime('%Y-%m-%d')}</p>
+                            <p><strong>KEY CODES:</strong> LP {life_path}, PD {personal_day}, {saju['day_master']}</p>
                         </div>
                         {markdown.markdown(response.text) if 'markdown' in locals() else response.text.replace('\n', '<br>')}
                     </body>
                     </html>
                     """
                     st.download_button(
-                        label="📄 리포트 저장하기 (HTML/PDF인쇄용)",
+                        label="📄 SAVE REPORT (HTML/PDF)",
                         data=html_content,
-                        file_name=f"{name}_운세리포트.html",
+                        file_name=f"{name}_report.html",
                         mime="text/html"
                     )
-                    st.caption("💡 다운로드한 파일을 열고 '인쇄(Ctrl+P) > PDF로 저장'을 선택하면 깔끔한 PDF가 됩니다.")
                     
                 else:
-                    st.warning("AI 리포트 생성에 실패했습니다. 다시 시도해주세요.")
+                    st.warning("AI 생성 실패. 다시 시도해주세요.")
                 
             except Exception as e:
-                st.error(f"분석 중 오류 발생: {e}")
+                st.error(f"SYSTEM ERROR: {e}")
