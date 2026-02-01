@@ -10,6 +10,9 @@ import plotly.graph_objects as go
 import requests
 import markdown
 import numpy as np # 텍스처 생성용 (혹시 모를 에러 방지)
+from PIL import Image
+import base64
+from io import BytesIO
 
 # ==========================================
 # [기본 설정] 페이지 디자인
@@ -23,14 +26,45 @@ st.set_page_config(
 # ==========================================
 # [설정] 배경 이미지 적용 🖼️
 # ==========================================
-# 사용자 제공 이미지 (Imgur 직접 링크로 변환 적용)
-CUSTOM_BG_URL = "https://i.imgur.com/W4o6mLu.jpeg"
+# 🚨 [주의] Imgur 링크나 HTML 코드는 외부 차단으로 인해 이미지가 깨질 수 있습니다.
+# 배경이 깨지지 않게 우선 비워두었습니다. (자동으로 고급 텍스처가 적용됩니다)
+# 이미지를 꼭 넣고 싶으다면 깃허브에 이미지를 올린 뒤 'Raw' 주소를 아래에 넣으세요.
+CUSTOM_BG_URL = "https://raw.githubusercontent.com/Wonderfulian/destiny-strategist/main/fortune%20website.png" 
 
 # 배경 CSS 결정
-bg_image_css = f"url('{CUSTOM_BG_URL}')"
-bg_size_css = "cover"
-bg_repeat_css = "no-repeat"
-bg_attachment = "fixed"
+if CUSTOM_BG_URL:
+    bg_image_css = f"url('{CUSTOM_BG_URL}')"
+    bg_size_css = "cover"
+    bg_repeat_css = "no-repeat"
+    bg_attachment = "fixed"
+else:
+    # 이미지가 없을 때: 자동 생성 텍스처 (Freshman 스타일 올리브 그레이)
+    @st.cache_data
+    def create_freshman_bg():
+        width, height = 100, 100
+        # Freshman 배경색 (Olive Grey 느낌)
+        base_r, base_g, base_b = 120, 125, 115
+        
+        # 노이즈 생성
+        noise_r = np.random.randint(-10, 10, (height, width), dtype=np.int16)
+        noise_g = np.random.randint(-10, 10, (height, width), dtype=np.int16)
+        noise_b = np.random.randint(-10, 10, (height, width), dtype=np.int16)
+        
+        texture = np.zeros((height, width, 3), dtype=np.uint8)
+        texture[..., 0] = np.clip(base_r + noise_r, 0, 255)
+        texture[..., 1] = np.clip(base_g + noise_g, 0, 255)
+        texture[..., 2] = np.clip(base_b + noise_b, 0, 255)
+        
+        img = Image.fromarray(texture)
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        return base64.b64encode(buffer.getvalue()).decode()
+
+    bg_base64 = create_freshman_bg()
+    bg_image_css = f"url('data:image/png;base64,{bg_base64}')"
+    bg_size_css = "auto"
+    bg_repeat_css = "repeat"
+    bg_attachment = "fixed"
 
 # ==========================================
 # [디자인 시스템] CSS 적용 (Freshman Style)
@@ -283,6 +317,10 @@ def draw_five_elements_chart(day_master):
         height=300
     )
     return fig
+
+def load_lottieurl(url):
+    try: r = requests.get(url); return r.json() if r.status_code == 200 else None
+    except: return None
 
 # ==========================================
 # [UI] 사이드바 및 메인
