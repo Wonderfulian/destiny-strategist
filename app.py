@@ -9,9 +9,9 @@ from lunar_python import Lunar, Solar
 import plotly.graph_objects as go
 from streamlit_lottie import st_lottie
 import requests
-from xhtml2pdf import pisa
-from io import BytesIO
-import markdown
+import markdown  # HTML 변환용
+
+# ❌ 여기서 xhtml2pdf 관련 import가 있으면 안 됩니다. (삭제됨)
 
 # ==========================================
 # [기본 설정] 페이지 디자인 & CSS
@@ -22,7 +22,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# [CSS] 가독성 최적화 테마 (입력창 수정 포함)
+# [CSS] 가독성 최적화 테마
 st.markdown("""
     <style>
     /* 메인 배경 */
@@ -79,7 +79,7 @@ st.markdown("""
         font-weight: 600;
     }
     
-    /* 버튼 스타일 수정: 폼 제출 버튼 등 모든 버튼의 글씨색을 검은색으로 강제 */
+    /* 버튼 */
     .stButton > button, div[data-testid="stFormSubmitButton"] > button { 
         background: linear-gradient(90deg, #FFD700 0%, #FDB931 100%); 
         color: #000000 !important;
@@ -187,7 +187,7 @@ except:
 # [함수 1] 주역 64괘 (전체 데이터 복원)
 # ==========================================
 def get_real_iching():
-    """주역 64괘 전체 리스트 (삭제 없음)"""
+    """주역 64괘 전체 리스트"""
     hexagrams = [
         "1. 중천건(乾) - 위대한 하늘, 강건함, 창조적 에너지", "2. 중지곤(坤) - 포용하는 땅, 유순함, 어머니의 품",
         "3. 수뢰둔(屯) - 험난한 시작, 인내하며 싹을 틔움", "4. 산수몽(蒙) - 어리석음을 깨우침, 배움의 시기",
@@ -225,7 +225,7 @@ def get_real_iching():
     return random.choice(hexagrams)
 
 # ==========================================
-# [함수 2] 점성술 (실시간 Ephem 계산 복원)
+# [함수 2] 점성술 (실시간 Ephem 계산)
 # ==========================================
 def get_real_astrology(year, month, day, hour, minute):
     try:
@@ -241,7 +241,7 @@ def get_real_astrology(year, month, day, hour, minute):
         return {"desc": f"천문 데이터 계산 중 오류: {str(e)}"}
 
 # ==========================================
-# [함수 3] 기문둔갑 (Lunar_python 정밀 계산 복원)
+# [함수 3] 기문둔갑 (Lunar_python 정밀 계산)
 # ==========================================
 def get_real_qimen(year, month, day, hour):
     try:
@@ -260,7 +260,7 @@ def get_real_qimen(year, month, day, hour):
         return {"desc": "방위 데이터 계산 실패"}
 
 # ==========================================
-# [함수 4] 타로 (78장 완전판 유지)
+# [함수 4] 타로 (78장 완전판)
 # ==========================================
 def get_real_tarot():
     """타로 78장 완전판 (Full Deck)"""
@@ -279,7 +279,7 @@ def get_real_tarot():
     return random.choice(major + minor)
 
 # ==========================================
-# [함수 5] 수비학 & 사주 (기존 로직 유지)
+# [함수 5] 수비학 & 사주
 # ==========================================
 def reduce_to_single_digit(num, check_master=True):
     while num > 9:
@@ -343,60 +343,6 @@ def load_lottieurl(url):
         return r.json() if r.status_code == 200 else None
     except: return None
 
-def create_pdf(name, content):
-    """
-    AI 리포트 내용을 깔끔한 PDF로 변환하는 함수 (한글 폰트 적용)
-    """
-    # 1. 마크다운을 HTML로 변환
-    html_content = markdown.markdown(content)
-    
-    # 2. PDF 스타일 및 템플릿 (나눔고딕 폰트 CDN 사용)
-    html_template = f"""
-    <html>
-    <head>
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap');
-            body {{
-                font-family: 'Nanum Gothic', sans-serif;
-                font-size: 12px;
-                line-height: 1.6;
-                padding: 30px;
-            }}
-            h1, h2, h3 {{ color: #302b63; }}
-            h1 {{ border-bottom: 2px solid #ffd700; padding-bottom: 10px; }}
-            strong {{ color: #302b63; }}
-            .box {{
-                background-color: #f8f9fa;
-                border: 1px solid #ddd;
-                padding: 15px;
-                border-radius: 5px;
-                margin-bottom: 20px;
-            }}
-            .footer {{
-                text-align: center;
-                font-size: 10px;
-                color: #888;
-                margin-top: 50px;
-                border-top: 1px solid #eee;
-                padding-top: 10px;
-            }}
-        </style>
-    </head>
-    <body>
-        <h1>🔮 {name}님의 운세 전략 리포트</h1>
-        <div class="box">
-            <p><strong>분석 일시:</strong> {datetime.datetime.now().strftime('%Y년 %m월 %d일')}</p>
-            <p>이 리포트는 AI 운세 전략가 V5.0 엔진에 의해 생성되었습니다.</p>
-        </div>
-        
-        {html_content}
-        
-        <div class="footer">
-            Powered by AI Fortune Strategy V5.0
-        </div>
-    </body>
-    </html>
-    """
 # ==========================================
 # [UI] 사이드바 및 메인
 # ==========================================
@@ -404,7 +350,6 @@ st.sidebar.title("🔮 운세 전략가")
 st.sidebar.caption("Master Engine V5.0 Final")
 st.sidebar.markdown("---")
 
-# [수정] enter_to_submit=False 추가
 with st.sidebar.form("input_form", enter_to_submit=False):
     name = st.text_input("이름", "방문자")
     col1, col2 = st.columns(2)
@@ -428,7 +373,7 @@ if submitted:
     if not MY_API_KEY:
         st.error("🚨 API 키가 설정되지 않았습니다.")
     else:
-        # [수정] 날짜/시간 포맷 파싱 로직 추가
+        # 날짜/시간 포맷 파싱 로직
         try:
             b_date = datetime.datetime.strptime(b_date_str, "%Y%m%d").date()
             b_time = datetime.datetime.strptime(b_time_str, "%H:%M").time()
@@ -471,7 +416,7 @@ if submitted:
             st.info(f"🪐 **점성술 배치:** {astro['desc']}")
             st.info(f"☯️ **주역 괘:** {iching}")
 
-        # 4. AI 리포트 생성 프롬프트 (수정됨)
+        # 4. AI 리포트 생성 프롬프트
         prompt = f"""
 저는 대한민국 최고의 운세 전략가입니다. {name}님을 위한 오늘 하루 실전 가이드를 작성해드립니다.
 
@@ -635,20 +580,36 @@ if submitted:
                 if response.text:
                     st.markdown(response.text)
                     
-                    # [NEW] PDF 다운로드 버튼 생성
+                    # [HTML 다운로드 기능]
                     st.markdown("---")
-                    pdf_bytes = create_pdf(name, response.text)
+                    html_content = f"""
+                    <html>
+                    <head>
+                        <style>
+                            body {{ font-family: sans-serif; padding: 40px; line-height: 1.6; }}
+                            h1 {{ color: #302b63; border-bottom: 2px solid #ffd700; padding-bottom: 10px; }}
+                            h2 {{ color: #302b63; margin-top: 30px; }}
+                            .box {{ background: #f0f0f0; padding: 20px; border-radius: 10px; margin-bottom: 20px; }}
+                        </style>
+                    </head>
+                    <body>
+                        <h1>🔮 {name}님의 운세 리포트</h1>
+                        <div class="box">
+                            <p><strong>분석 일시:</strong> {datetime.datetime.now().strftime('%Y년 %m월 %d일')}</p>
+                            <p><strong>핵심 키워드:</strong> 운명수 {life_path}, 일운수 {personal_day}, {saju['day_master']}일간</p>
+                        </div>
+                        {markdown.markdown(response.text) if 'markdown' in locals() else response.text.replace('\n', '<br>')}
+                    </body>
+                    </html>
+                    """
+                    st.download_button(
+                        label="📄 리포트 저장하기 (HTML/PDF인쇄용)",
+                        data=html_content,
+                        file_name=f"{name}_운세리포트.html",
+                        mime="text/html"
+                    )
+                    st.caption("💡 다운로드한 파일을 열고 '인쇄(Ctrl+P) > PDF로 저장'을 선택하면 깔끔한 PDF가 됩니다.")
                     
-                    if pdf_bytes:
-                        st.download_button(
-                            label="📄 리포트 PDF로 저장하기",
-                            data=pdf_bytes,
-                            file_name=f"{name}_운세리포트.pdf",
-                            mime="application/pdf"
-                        )
-                    else:
-                        st.error("PDF 생성 중 오류가 발생했습니다.")
-                        
                 else:
                     st.warning("AI 리포트 생성에 실패했습니다. 다시 시도해주세요.")
                 
