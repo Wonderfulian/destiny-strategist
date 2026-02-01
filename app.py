@@ -9,6 +9,9 @@ from lunar_python import Lunar, Solar
 import plotly.graph_objects as go
 from streamlit_lottie import st_lottie
 import requests
+from xhtml2pdf import pisa
+from io import BytesIO
+import markdown
 
 # ==========================================
 # [기본 설정] 페이지 디자인 & CSS
@@ -340,6 +343,60 @@ def load_lottieurl(url):
         return r.json() if r.status_code == 200 else None
     except: return None
 
+def create_pdf(name, content):
+    """
+    AI 리포트 내용을 깔끔한 PDF로 변환하는 함수 (한글 폰트 적용)
+    """
+    # 1. 마크다운을 HTML로 변환
+    html_content = markdown.markdown(content)
+    
+    # 2. PDF 스타일 및 템플릿 (나눔고딕 폰트 CDN 사용)
+    html_template = f"""
+    <html>
+    <head>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&display=swap');
+            body {{
+                font-family: 'Nanum Gothic', sans-serif;
+                font-size: 12px;
+                line-height: 1.6;
+                padding: 30px;
+            }}
+            h1, h2, h3 {{ color: #302b63; }}
+            h1 {{ border-bottom: 2px solid #ffd700; padding-bottom: 10px; }}
+            strong {{ color: #302b63; }}
+            .box {{
+                background-color: #f8f9fa;
+                border: 1px solid #ddd;
+                padding: 15px;
+                border-radius: 5px;
+                margin-bottom: 20px;
+            }}
+            .footer {{
+                text-align: center;
+                font-size: 10px;
+                color: #888;
+                margin-top: 50px;
+                border-top: 1px solid #eee;
+                padding-top: 10px;
+            }}
+        </style>
+    </head>
+    <body>
+        <h1>🔮 {name}님의 운세 전략 리포트</h1>
+        <div class="box">
+            <p><strong>분석 일시:</strong> {datetime.datetime.now().strftime('%Y년 %m월 %d일')}</p>
+            <p>이 리포트는 AI 운세 전략가 V5.0 엔진에 의해 생성되었습니다.</p>
+        </div>
+        
+        {html_content}
+        
+        <div class="footer">
+            Powered by AI Fortune Strategy V5.0
+        </div>
+    </body>
+    </html>
+    """
 # ==========================================
 # [UI] 사이드바 및 메인
 # ==========================================
@@ -577,6 +634,21 @@ if submitted:
                 # 결과 출력
                 if response.text:
                     st.markdown(response.text)
+                    
+                    # [NEW] PDF 다운로드 버튼 생성
+                    st.markdown("---")
+                    pdf_bytes = create_pdf(name, response.text)
+                    
+                    if pdf_bytes:
+                        st.download_button(
+                            label="📄 리포트 PDF로 저장하기",
+                            data=pdf_bytes,
+                            file_name=f"{name}_운세리포트.pdf",
+                            mime="application/pdf"
+                        )
+                    else:
+                        st.error("PDF 생성 중 오류가 발생했습니다.")
+                        
                 else:
                     st.warning("AI 리포트 생성에 실패했습니다. 다시 시도해주세요.")
                 

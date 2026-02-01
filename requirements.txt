@@ -6,3 +6,5 @@ pytz
 streamlit-lottie
 plotly
 requests
+xhtml2pdf
+markdown
